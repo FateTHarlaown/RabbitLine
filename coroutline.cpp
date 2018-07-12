@@ -113,5 +113,5 @@ void scheduler::workerRoutline()
 
     workers_[id].func(workers_[id].arg);
     runningWorker_ = -1;
-    workers_[id].state = FINISHED;
+    workers_[id].state = FREE;
 }

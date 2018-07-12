@@ -21,7 +21,6 @@ enum State {
     RUNABLE,
     RUNNING,
     SUSPEND,
-    FINISHED
 };
 
 typedef struct args {
@@ -56,11 +55,6 @@ public:
     {
         run_ = false;
         loopThread.join();
-    }
-
-    State getCoroutLineState(int id)
-    {
-        return workers_[id].state;
     }
 
     void yeild();
