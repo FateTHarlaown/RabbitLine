@@ -2,22 +2,29 @@
 // Created by NorSnow_ZJ on 2018/7/5.
 //
 
+#include <cstring>
+#include <cassert>
+#include <iostream>
 #include "coroutline.h"
 
 scheduler::scheduler() : runningWorker_(-1)
 {
     workers_ = new coroutline_t[kMaxCoroutlineNum];
+    stack_ = new char[kMaxStackSize];
+
     for (int i = 0; i < kMaxCoroutlineNum; ++i) {
         workers_->state = FREE;
     }
+
 }
 
 scheduler::~scheduler()
 {
     delete [] workers_;
+    delete [] stack_;
 }
 
-void scheduler::start()
+void scheduler::startLoopInThread()
 {
     run_ = true;
     loopThread = std::move(std::thread(std::bind(mainLoop, this)));
@@ -56,19 +63,26 @@ int scheduler::create(Func func, void *arg)
 
 void scheduler::resume(int id)
 {
+    //std::cout << "resume worker " << id << "state: " << workers_[id].state << std::endl;
     switch (workers_[id].state) {
         case RUNABLE:
             getcontext(&workers_[id].ctx);
 
-            workers_[id].ctx.uc_stack.ss_sp = workers_[id].stack;
-            workers_[id].ctx.uc_stack.ss_size = kDefaultStackSize;
+            workers_[id].ctx.uc_stack.ss_sp = stack_;
+            workers_[id].ctx.uc_stack.ss_size = kMaxStackSize;
             workers_[id].ctx.uc_sigmask = 0;
             workers_[id].ctx.uc_link = &schedulerCtx_;
+            runningWorker_ = id;
+            workers_[id].state = RUNNING;
 
             makecontext(&workers_[id].ctx, (void (*)(void))(&scheduler::workerRoutline), 1, this);
+            swapcontext(&schedulerCtx_, &workers_[id].ctx);
+
+            break;
 
         case SUSPEND:
-
+            //std::cout << "worker: " << id << " resume suspend" << std::endl;
+            memcpy(stack_+kMaxStackSize - workers_[id].stackSize, workers_[id].stack, workers_[id].stackSize);
             runningWorker_ = id;
             workers_[id].state = RUNNING;
 
@@ -81,13 +95,35 @@ void scheduler::resume(int id)
     }
 }
 
+State scheduler::getStatus(int id)
+{
+    return workers_[id].state;
+}
+
+void scheduler::saveCoStack(int id)
+{
+    char dummy = 0;
+    uint64_t size = stack_ + kMaxStackSize - &dummy;
+    assert(size <= kMaxStackSize);
+
+    if (size > workers_[id].stackSize) {
+        delete [] workers_[id].stack;
+        workers_[id].stack = new char[size];
+    }
+
+    workers_[id].stackSize = size;
+    workers_[id].stackCapacity = size;
+
+    memcpy(workers_[id].stack, &dummy, size);
+}
+
 void scheduler::yeild()
 {
     if (runningWorker_ != -1) {
         int id = runningWorker_;
         runningWorker_ = -1;
         workers_[id].state = SUSPEND;
-
+        saveCoStack(id);
         swapcontext(&workers_[id].ctx, &schedulerCtx_);
     }
 }
@@ -95,11 +131,10 @@ void scheduler::yeild()
 void scheduler::mainLoop()
 {
     while (run_) {
-        int id;
 
         for (int i = 0; i < kMaxCoroutlineNum; ++i) {
             if (workers_[i].state == RUNABLE || workers_[i].state == SUSPEND) {
-                id = i;
+                int id = i;
                 resume(id);
             }
         }

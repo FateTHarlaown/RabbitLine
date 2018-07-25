@@ -7,26 +7,45 @@ void func1(arg_t arg)
     std::cout << "aaaaaa" << std::endl;
     arg.sc->yeild();
     std::cout << "bbbbbb" << std::endl;
-}
-
-
-void func2(arg_t arg)
-{
+    arg.sc->yeild();
     std::cout << "cccccc" << std::endl;
     arg.sc->yeild();
     std::cout << "dddddd" << std::endl;
 }
 
+
+void func2(arg_t arg)
+{
+    std::cout << "uuuuuu" << std::endl;
+    arg.sc->yeild();
+    std::cout << "xxxxxx" << std::endl;
+    arg.sc->yeild();
+    std::cout << "yyyyyy" << std::endl;
+    arg.sc->yeild();
+    std::cout << "zzzzzz" << std::endl;
+}
+
 int main()
 {
-    std::cout << "Hello, coroutline!" << std::endl;
+    std::cout << "coroutline in other thread!" << std::endl;
     scheduler sc;
     sc.create(func1, NULL);
     sc.create(func2, NULL);
-    sc.start();
+    sc.startLoopInThread();
 
-    sleep(6);
+    sleep(10);
 
-    sc.stop();
+    sc.stopLoop();
+
+    int co1 = sc.create(func1, NULL);
+    int co2 = sc.create(func2, NULL);
+
+
+    std::cout << "coroutline in local thread!" << std::endl;
+    while (sc.getStatus(co1) !=  FREE || sc.getStatus(co2) != FREE) {
+        sc.resume(co1);
+        sc.resume(co2);
+    }
+
     return 0;
 }

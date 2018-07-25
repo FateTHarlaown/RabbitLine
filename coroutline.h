@@ -34,24 +34,36 @@ static const int kDefaultStackSize = 1024 * 128;
 typedef struct coroutline {
     std::atomic<State> state;
     ucontext_t ctx;
-    char stack[kDefaultStackSize];
+    char * stack;
     Func func;
     arg_t arg;
+    uint64_t stackSize;
+    uint64_t stackCapacity;
+
+    coroutline() : stack(nullptr), stackSize(0), stackCapacity(kDefaultStackSize)
+    {
+        stack = new char[stackCapacity];
+    }
+
+    ~coroutline()
+    {
+        if (stackCapacity > 0) {
+            delete [] stack;
+        }
+    }
 } coroutline_t;
 
 class scheduler
 {
 public:
-    using WorkerQueue= std::deque<int>;
-
     scheduler();
     scheduler(const scheduler &) = delete;
     scheduler &operator=(const scheduler &) = delete;
     ~scheduler();
 
-    void start();
+    void startLoopInThread();
 
-    void stop()
+    void stopLoop()
     {
         run_ = false;
         loopThread.join();
@@ -60,16 +72,20 @@ public:
     void yeild();
     int create(Func func, void * arg);
     void resume(int id);
+    State getStatus(int id);
 
 private:
+    void saveCoStack(int id);
     void mainLoop();
     int getIdleWorker();
     void workerRoutline();
 
 private:
-    static const int kMaxCoroutlineNum = 1000;
+    static const int kMaxCoroutlineNum = 10000;
+    static const uint64_t kMaxStackSize = 1024 * 1024;
 
     coroutline_t * workers_;
+    char * stack_;
     std::thread loopThread;
     std::mutex mu_;
     std::atomic_bool run_;
