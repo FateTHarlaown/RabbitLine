@@ -5,5 +5,5 @@ set(CMAKE_CXX_STANDARD 11)
 
 link_libraries(pthread)
 
-set(SOURCE_FILES main.cpp coroutline.cpp)
+set(SOURCE_FILES main.cpp coroutline.cpp poller.cpp poller.h)
 add_executable(coroutline ${SOURCE_FILES})

@@ -7,14 +7,14 @@
 
 #include <ucontext.h>
 #include <thread>
-#include <deque>
 #include <atomic>
 #include <mutex>
 #include <thread>
 #include <functional>
 
-class scheduler;
-
+class Scheduler;
+struct arg_t;
+using Func = void (*)(arg_t);
 //协程运行状态
 enum State {
     FREE,
@@ -23,13 +23,13 @@ enum State {
     SUSPEND,
 };
 
+//每个协程的初始栈大小
+static const int kDefaultStackSize = 1024 * 128;
+
 typedef struct args {
-    scheduler * sc;
+    Scheduler * sc;
     void * arg;
 } arg_t;
-
-using Func = void (*)(arg_t);
-static const int kDefaultStackSize = 1024 * 128;
 
 typedef struct coroutline {
     std::atomic<State> state;
@@ -39,6 +39,9 @@ typedef struct coroutline {
     arg_t arg;
     uint64_t stackSize;
     uint64_t stackCapacity;
+
+    coroutline(const coroutline&) = delete;
+    coroutline& operator=(const coroutline&) = delete;
 
     coroutline() : stack(nullptr), stackSize(0), stackCapacity(kDefaultStackSize)
     {
@@ -53,13 +56,13 @@ typedef struct coroutline {
     }
 } coroutline_t;
 
-class scheduler
+class Scheduler
 {
 public:
-    scheduler();
-    scheduler(const scheduler &) = delete;
-    scheduler &operator=(const scheduler &) = delete;
-    ~scheduler();
+    Scheduler();
+    Scheduler(const Scheduler&) = delete;
+    Scheduler& operator=(const Scheduler&) = delete;
+    ~Scheduler();
 
     void startLoopInThread();
 

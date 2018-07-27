@@ -7,7 +7,7 @@
 #include <iostream>
 #include "coroutline.h"
 
-scheduler::scheduler() : runningWorker_(-1)
+Scheduler::Scheduler() : runningWorker_(-1)
 {
     workers_ = new coroutline_t[kMaxCoroutlineNum];
     stack_ = new char[kMaxStackSize];
@@ -18,19 +18,19 @@ scheduler::scheduler() : runningWorker_(-1)
 
 }
 
-scheduler::~scheduler()
+Scheduler::~Scheduler()
 {
     delete [] workers_;
     delete [] stack_;
 }
 
-void scheduler::startLoopInThread()
+void Scheduler::startLoopInThread()
 {
     run_ = true;
     loopThread = std::move(std::thread(std::bind(mainLoop, this)));
 }
 
-int scheduler::getIdleWorker()
+int Scheduler::getIdleWorker()
 {
     for (int i = 0; i < kMaxCoroutlineNum; ++i) {
         if (workers_[i].state == FREE) {
@@ -41,7 +41,7 @@ int scheduler::getIdleWorker()
     return -1;
 }
 
-int scheduler::create(Func func, void *arg)
+int Scheduler::create(Func func, void *arg)
 {
     //同一时间只能有一个任务处于创建中
     std::lock_guard<std::mutex> guard(mu_);
@@ -61,7 +61,7 @@ int scheduler::create(Func func, void *arg)
     return id;
 }
 
-void scheduler::resume(int id)
+void Scheduler::resume(int id)
 {
     //std::cout << "resume worker " << id << "state: " << workers_[id].state << std::endl;
     switch (workers_[id].state) {
@@ -75,7 +75,7 @@ void scheduler::resume(int id)
             runningWorker_ = id;
             workers_[id].state = RUNNING;
 
-            makecontext(&workers_[id].ctx, (void (*)(void))(&scheduler::workerRoutline), 1, this);
+            makecontext(&workers_[id].ctx, (void (*)(void))(&Scheduler::workerRoutline), 1, this);
             swapcontext(&schedulerCtx_, &workers_[id].ctx);
 
             break;
@@ -95,12 +95,12 @@ void scheduler::resume(int id)
     }
 }
 
-State scheduler::getStatus(int id)
+State Scheduler::getStatus(int id)
 {
     return workers_[id].state;
 }
 
-void scheduler::saveCoStack(int id)
+void Scheduler::saveCoStack(int id)
 {
     char dummy = 0;
     uint64_t size = stack_ + kMaxStackSize - &dummy;
@@ -117,7 +117,7 @@ void scheduler::saveCoStack(int id)
     memcpy(workers_[id].stack, &dummy, size);
 }
 
-void scheduler::yeild()
+void Scheduler::yeild()
 {
     if (runningWorker_ != -1) {
         int id = runningWorker_;
@@ -128,7 +128,7 @@ void scheduler::yeild()
     }
 }
 
-void scheduler::mainLoop()
+void Scheduler::mainLoop()
 {
     while (run_) {
 
@@ -142,7 +142,7 @@ void scheduler::mainLoop()
     }
 }
 
-void scheduler::workerRoutline()
+void Scheduler::workerRoutline()
 {
     int id = runningWorker_;
 

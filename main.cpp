@@ -27,8 +27,8 @@ void func2(arg_t arg)
 
 int main()
 {
-    std::cout << "coroutline in other thread!" << std::endl;
-    scheduler sc;
+    std::cout << "coroutline_t in other thread!" << std::endl;
+    Scheduler sc;
     sc.create(func1, NULL);
     sc.create(func2, NULL);
     sc.startLoopInThread();
@@ -41,7 +41,7 @@ int main()
     int co2 = sc.create(func2, NULL);
 
 
-    std::cout << "coroutline in local thread!" << std::endl;
+    std::cout << "coroutline_t in local thread!" << std::endl;
     while (sc.getStatus(co1) !=  FREE || sc.getStatus(co2) != FREE) {
         sc.resume(co1);
         sc.resume(co2);
