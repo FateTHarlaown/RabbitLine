@@ -91,6 +91,7 @@ public:
 
 protected:
     std::vector<Channel*> activeChannels_;
+    std::vector<TimeoutCallbackFunc> timeOutQue_;
     static const int kIntervalTime = 1;
 };
 
@@ -126,4 +127,6 @@ private:
 
 
 
+
 #endif //COROUTLINE_POLLER_H
+

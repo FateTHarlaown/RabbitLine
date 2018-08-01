@@ -3,6 +3,7 @@
 //
 
 #include "poller.h"
+#include <inttypes.h>
 
 void  Channel::handleEvents()
 {
@@ -52,7 +53,13 @@ void PollPoller::poll()
         }
     }
 
-    //todo:处理定时器超时
+    //todo:添加定时器超时事件
+
+    for (const auto& func : timeOutQue_) {
+        func();
+    }
 
     handleEvents();
 }
+
+
