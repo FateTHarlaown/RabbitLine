@@ -13,7 +13,12 @@
 #include <functional>
 
 class Scheduler;
-struct arg_t;
+
+typedef struct args {
+    Scheduler * sc;
+    void * arg;
+} arg_t;
+
 using Func = void (*)(arg_t);
 //协程运行状态
 enum State {
@@ -26,10 +31,6 @@ enum State {
 //每个协程的初始栈大小
 static const int kDefaultStackSize = 1024 * 128;
 
-typedef struct args {
-    Scheduler * sc;
-    void * arg;
-} arg_t;
 
 typedef struct coroutline {
     std::atomic<State> state;

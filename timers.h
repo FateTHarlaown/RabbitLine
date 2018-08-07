@@ -6,6 +6,7 @@
 #define COROUTLINE_TIMERS_H
 
 #include <sys/types.h>
+#include "callbacks.h"
 
 class Timestamp
 {
@@ -33,6 +34,27 @@ private:
 
 bool operator <(Timestamp l, Timestamp r);
 bool operator ==(Timestamp l, Timestamp r);
+
+class Timer
+{
+public:
+    Timer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat = false, int interval = 0) :
+            expirationTime_(expirationTime), callback_(callback), repeat_(repeat), interval_(interval)
+    {
+
+    }
+    Timer(const Timer&) = delete;
+    Timer&operator=(const Timer&) = delete;
+    void reset();
+    void run();
+    bool isRepeat();
+    Timestamp getExpiration();
+private:
+    Timestamp expirationTime_;
+    TimeoutCallbackFunc callback_;
+    bool repeat_;
+    const int interval_;
+};
 
 #endif //COROUTLINE_TIMERS_H
 

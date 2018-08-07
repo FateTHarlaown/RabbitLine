@@ -6,19 +6,18 @@
 #define COROUTLINE_POLLER_H
 
 #include <poll.h>
-#include <functional>
 #include <vector>
+#include <map>
 #include <unordered_map>
-
-using EventCallbackFunc = std::function<void ()>;
-using TimeoutCallbackFunc = std::function<void ()>;
+#include "callbacks.h"
+#include "timers.h"
 
 class poller;
 
 class Channel
 {
 public:
-    Channel(poller* po, int event) : poller_(po), events_()
+    Channel(poller* po, int fd) : poller_(po), fd_(fd)
     {
     }
 
@@ -81,25 +80,35 @@ private:
     EventCallbackFunc writeCallbackFunc_;
     EventCallbackFunc errorCallbackFunc_;
 };
+
 //给协程库用的poller都是在一个线程用的，不用考虑并发
 class poller
 {
 public:
-    virtual void poll() = 0;
+    virtual void runPoll() = 0;
     virtual void addChannel(Channel* ch) = 0;
     virtual void removeChannel(Channel* ch) = 0;
+    virtual ~poller();
+    bool addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat = false, int interval = 0);
+    void addPendingFunction(PendingCallbackFunc func);
+
+protected:
+    void getExpiredTimers();
+    void dealExpiredTimers();
+    void dealPendingFunctors();
 
 protected:
     std::vector<Channel*> activeChannels_;
-    std::vector<TimeoutCallbackFunc> timeOutQue_;
+    std::multimap<Timestamp, Timer*> timers_;
+    std::vector<std::pair<Timestamp, Timer*>> timeOutQue_;
+    std::vector<PendingCallbackFunc> pendingFunctors_;
     static const int kIntervalTime = 1;
 };
 
 class PollPoller : public poller
 {
 public:
-    virtual void poll();
-    virtual void handleEvents();
+    virtual void runPoll();
     virtual void addChannel(Channel* ch)
     {
         pollChannels_.insert(std::pair<int,Channel*>(ch->getFd(), ch));
@@ -111,6 +120,11 @@ public:
             pollChannels_.erase(ch->getFd());
         }
     }
+
+private:
+    void getActiveChannels();
+    void preparePollEvents();
+    void handleEvents();
 
 private:
     std::vector<struct pollfd> pollfds_;

@@ -1,6 +1,6 @@
 #include <iostream>
-#include <unistd.h>
 #include "coroutline.h"
+#include "poller.h"
 
 void func1(arg_t arg)
 {
@@ -25,8 +25,19 @@ void func2(arg_t arg)
     std::cout << "zzzzzz" << std::endl;
 }
 
+void timer1()
+{
+    std::cout << "Timer1 爆了啊！！！" << std::endl;
+}
+
+void timer2()
+{
+    std::cout << "Timer2 炸了啊！！！！！！！！！" << std::endl;
+}
+
 int main()
 {
+    /*
     std::cout << "coroutline_t in other thread!" << std::endl;
     Scheduler sc;
     sc.create(func1, NULL);
@@ -46,6 +57,13 @@ int main()
         sc.resume(co1);
         sc.resume(co2);
     }
+    */
 
+    PollPoller * p = new PollPoller();
+    p->addTimer(Timestamp::nowAfter(1), timer1, true, 3);
+    p->addTimer(Timestamp::nowAfter(5), timer2, true, 5);
+    while (1) {
+        p->runPoll();
+    }
     return 0;
 }

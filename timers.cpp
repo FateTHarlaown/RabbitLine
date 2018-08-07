@@ -4,7 +4,8 @@
 #include <inttypes.h>
 #include <sys/time.h>
 #include <string>
-#include "timers.h
+#include "timers.h"
+
 
 bool Timestamp::valid()
 {
@@ -51,4 +52,26 @@ bool operator<(Timestamp l, Timestamp r)
 bool operator==(Timestamp l, Timestamp r)
 {
     return l.microSecondsSinceEpoch() == r.microSecondsSinceEpoch();
+}
+
+void Timer::reset()
+{
+    if (repeat_) {
+        expirationTime_ = Timestamp::nowAfter(interval_);
+    }
+}
+
+void Timer::run()
+{
+    callback_();
+}
+
+bool Timer::isRepeat()
+{
+    return repeat_;
+}
+
+Timestamp Timer::getExpiration()
+{
+    return expirationTime_;
 }
