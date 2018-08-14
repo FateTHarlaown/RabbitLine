@@ -4,15 +4,48 @@
 
 #include "poller.h"
 #include <inttypes.h>
+#include <cassert>
 
 
-bool poller::addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat, int interval)
+int64_t Poller::addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat, int interval)
 {
+    if (expirationTime < Timestamp::now()) {
+        return -1;
+    }
+
     Timer * timer = new Timer(expirationTime, callback, repeat, interval);
+    int64_t timerSeq = seq_++;
+    waitingTimers_.insert(std::pair<int64_t , Timer*>(timerSeq, timer));
     timers_.insert(std::pair<Timestamp, Timer*>(expirationTime, timer));
+
+    return timerSeq;
 }
 
-poller::~poller()
+void Poller::removeTimer(int64_t seq)
+{
+    auto it = waitingTimers_.find(seq);
+
+    if (it == waitingTimers_.end()) {
+        return;
+    }
+
+    Timer * delTimer = it->second;
+    size_t count = timers_.count(delTimer->getExpiration());
+    assert(count > 0);
+
+    auto t = timers_.find(delTimer->getExpiration());
+    for (size_t i = 0; i < count; i++, t++) {
+        if (it->second == delTimer) {
+            timers_.erase(t);
+            waitingTimers_.erase(seq);
+            break;
+        }
+    }
+
+    delete delTimer;
+}
+
+Poller::~Poller()
 {
     for (const auto& p : timers_) {
         if (p.second) {
@@ -21,7 +54,7 @@ poller::~poller()
     }
 }
 
-void poller::getExpiredTimers()
+void Poller::getExpiredTimers()
 {
     timeOutQue_.clear();
     if (!timers_.empty()) {
@@ -32,7 +65,7 @@ void poller::getExpiredTimers()
     }
 }
 
-void poller::dealExpiredTimers()
+void Poller::dealExpiredTimers()
 {
     for (const auto& t: timeOutQue_) {
         t.second->run();
@@ -43,14 +76,14 @@ void poller::dealExpiredTimers()
     }
 }
 
-void poller::dealPendingFunctors()
+void Poller::dealPendingFunctors()
 {
     for (auto& f : pendingFunctors_) {
         f();
     }
 }
 
-void poller::addPendingFunction(PendingCallbackFunc func)
+void Poller::addPendingFunction(PendingCallbackFunc func)
 {
     pendingFunctors_.push_back(func);
 }
@@ -114,6 +147,10 @@ void PollPoller::getActiveChannels()
     activeChannels_.clear();
     for (const auto & ev : pollfds_) {
         if (ev.revents & (POLLOUT | POLLIN | POLLPRI | POLLERR | POLLHUP | POLLNVAL)) {
+            if (pollChannels_.find(ev.fd) == pollChannels_.end()) {
+                continue;
+            }
+
             Channel * ch = pollChannels_[ev.fd];
             ch->setRevents(ev.revents);
             activeChannels_.push_back(ch);

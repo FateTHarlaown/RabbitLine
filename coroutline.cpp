@@ -27,7 +27,7 @@ Scheduler::~Scheduler()
 void Scheduler::startLoopInThread()
 {
     run_ = true;
-    loopThread = std::move(std::thread(std::bind(mainLoop, this)));
+    loopThread = std::move(std::thread(std::bind(&Scheduler::mainLoop, this)));
 }
 
 int Scheduler::getIdleWorker()
@@ -70,7 +70,7 @@ void Scheduler::resume(int id)
 
             workers_[id].ctx.uc_stack.ss_sp = stack_;
             workers_[id].ctx.uc_stack.ss_size = kMaxStackSize;
-            workers_[id].ctx.uc_sigmask = 0;
+            workers_[id].ctx.uc_sigmask = {0};
             workers_[id].ctx.uc_link = &schedulerCtx_;
             runningWorker_ = id;
             workers_[id].state = RUNNING;

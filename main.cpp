@@ -59,7 +59,7 @@ int main()
     }
     */
 
-    PollPoller * p = new PollPoller();
+    Poller * p = new PollPoller();
     p->addTimer(Timestamp::nowAfter(1), timer1, true, 3);
     p->addTimer(Timestamp::nowAfter(5), timer2, true, 5);
     while (1) {

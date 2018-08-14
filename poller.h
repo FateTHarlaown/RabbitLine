@@ -6,6 +6,9 @@
 #define COROUTLINE_POLLER_H
 
 #include <poll.h>
+#ifdef __linux__
+#include <sys/epoll.h>
+#endif
 #include <vector>
 #include <map>
 #include <unordered_map>
@@ -63,14 +66,14 @@ public:
 
 private:
     const static int kNoEvent = 0;
-#ifdef  __CYGWIN__
+#ifdef  __linux__
+    const static int kReadEvent = EPOLLIN;
+    const static int kWriteEvent = EPOLLOUT;
+    const static int kErrorEvent = EPOLLERR;
+#else
     const static int kReadEvent = POLLIN | POLLPRI;
     const static int kWriteEvent = POLLOUT;
     const static int kErrorEvent = POLLERR;
-#else
-    //todo:linux 上使用Eepoll来实现
-    const static int kReadEvent = EPOLLIN;
-    const static int kWriteEvent = EPOLLOUT;
 #endif
     poller * poller_;
     int events_;
@@ -82,14 +85,21 @@ private:
 };
 
 //给协程库用的poller都是在一个线程用的，不用考虑并发
-class poller
+class Poller
 {
 public:
+    Poller() : seq_(0)
+    {
+
+    }
+    Poller(const Poller&) = delete;
+    const Poller&operator=(const Poller&) = delete;
     virtual void runPoll() = 0;
     virtual void addChannel(Channel* ch) = 0;
     virtual void removeChannel(Channel* ch) = 0;
-    virtual ~poller();
-    bool addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat = false, int interval = 0);
+    virtual ~Poller();
+    int64_t addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat = false, int interval = 0);
+    void removeTimer(int64_t seq);
     void addPendingFunction(PendingCallbackFunc func);
 
 protected:
@@ -98,14 +108,16 @@ protected:
     void dealPendingFunctors();
 
 protected:
+    static const int kIntervalTime = 1;
+    int64_t seq_;
     std::vector<Channel*> activeChannels_;
     std::multimap<Timestamp, Timer*> timers_;
     std::vector<std::pair<Timestamp, Timer*>> timeOutQue_;
+    std::unordered_map<int64_t , Timer*> waitingTimers_;
     std::vector<PendingCallbackFunc> pendingFunctors_;
-    static const int kIntervalTime = 1;
 };
 
-class PollPoller : public poller
+class PollPoller : public Poller
 {
 public:
     virtual void runPoll();
@@ -128,11 +140,12 @@ private:
 
 private:
     std::vector<struct pollfd> pollfds_;
+    //channel的生命周期由外部管理
     std::unordered_map<int, Channel*> pollChannels_;
 };
 
 //tood:finish it
-class EpollPoller : public poller
+class EpollPoller : public Poller
 {
 public:
 
