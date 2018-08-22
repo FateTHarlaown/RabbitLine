@@ -50,6 +50,7 @@ void Scheduler::initSwitchCtx()
     /*这个上下文在中途就会跳转，绝不会执行完*/
     switchCtx_.uc_link = NULL;
     makecontext(&switchCtx_, (void (*)())(&Scheduler::jumpToRunningCo), 1, this);
+    switchInited_ = true;
 }
 
 int Scheduler::getIdleWorker()
