@@ -15,12 +15,12 @@
 #include "callbacks.h"
 #include "timers.h"
 
-class poller;
+class Poller;
 
 class Channel
 {
 public:
-    Channel(poller* po, int fd) : poller_(po), fd_(fd)
+    Channel(Poller* po, int fd) : poller_(po), fd_(fd), events_(kNoEvent)
     {
     }
 
@@ -57,17 +57,32 @@ public:
         events_ &= ~kReadEvent;
     }
 
+    void clearEvents()
+    {
+        events_ = kNoEvent;
+    }
+
     int getFd()
     {
         return fd_;
     }
 
+    void addToPoller()
+    {
+        //poller_->addChannel(this);
+    }
+
+    void removeFromPoller()
+    {
+        //poller_->removeChannel(this);
+    }
+
     void handleEvents();
 
-private:
+public:
     const static int kNoEvent = 0;
 #ifdef  __linux__
-    const static int kReadEvent = EPOLLIN;
+    const static int kReadEvent = EPOLLIN | EPOLLPRI;
     const static int kWriteEvent = EPOLLOUT;
     const static int kErrorEvent = EPOLLERR;
 #else
@@ -75,7 +90,9 @@ private:
     const static int kWriteEvent = POLLOUT;
     const static int kErrorEvent = POLLERR;
 #endif
-    poller * poller_;
+
+private:
+    Poller * poller_;
     int events_;
     int revents_;
     int fd_;
@@ -121,17 +138,8 @@ class PollPoller : public Poller
 {
 public:
     virtual void runPoll();
-    virtual void addChannel(Channel* ch)
-    {
-        pollChannels_.insert(std::pair<int,Channel*>(ch->getFd(), ch));
-    }
-
-    virtual void removeChannel(Channel* ch)
-    {
-        if (pollChannels_.end() != pollChannels_.find(ch->getFd())) {
-            pollChannels_.erase(ch->getFd());
-        }
-    }
+    virtual void addChannel(Channel* ch);
+    virtual void removeChannel(Channel* ch);
 
 private:
     void getActiveChannels();
@@ -144,7 +152,7 @@ private:
     std::unordered_map<int, Channel*> pollChannels_;
 };
 
-//tood:finish it
+//todo:finish it
 class EpollPoller : public Poller
 {
 public:

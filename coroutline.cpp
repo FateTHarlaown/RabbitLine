@@ -7,7 +7,18 @@
 #include <iostream>
 #include "coroutline.h"
 
-Scheduler::Scheduler() : runningWorker_(-1)
+__thread Scheduler * localScheduler = NULL;
+
+Scheduler * getLocalScheduler()
+{
+    if (!localScheduler) {
+        localScheduler = new Scheduler();
+    }
+
+    return localScheduler;
+}
+
+Scheduler::Scheduler() : runningWorker_(-1), run_(false), switchInited_(false)
 {
     workers_ = new coroutline_t[kMaxCoroutlineNum];
     stack_ = new char[kMaxStackSize];
@@ -16,18 +27,29 @@ Scheduler::Scheduler() : runningWorker_(-1)
         workers_->state = FREE;
     }
 
-}
+    callPath_ = new std::stack<int>();
+    switchStack_ = new char[1024];
+
+    poller_ = new PollPoller();}
 
 Scheduler::~Scheduler()
 {
+    delete poller_;
+    delete [] switchStack_;
+    delete callPath_;
     delete [] workers_;
     delete [] stack_;
 }
 
-void Scheduler::startLoopInThread()
+void Scheduler::initSwitchCtx()
 {
-    run_ = true;
-    loopThread = std::move(std::thread(std::bind(&Scheduler::mainLoop, this)));
+    getcontext(&switchCtx_);
+    switchCtx_.uc_stack.ss_sp = switchStack_;
+    switchCtx_.uc_stack.ss_size = 1024;
+    switchCtx_.uc_sigmask = {0};
+    /*这个上下文在中途就会跳转，绝不会执行完*/
+    switchCtx_.uc_link = NULL;
+    makecontext(&switchCtx_, (void (*)())(&Scheduler::jumpToRunningCo), 1, this);
 }
 
 int Scheduler::getIdleWorker()
@@ -43,19 +65,17 @@ int Scheduler::getIdleWorker()
 
 int Scheduler::create(Func func, void *arg)
 {
-    //同一时间只能有一个任务处于创建中
-    std::lock_guard<std::mutex> guard(mu_);
     int id = getIdleWorker();
     if (id == -1) {
         return -1;
     }
 
-    arg_t routLineArg;
-    routLineArg.arg = arg;
-    routLineArg.sc = this;
+    if (!switchInited_) {
+        initSwitchCtx();
+    }
 
     workers_[id].func = func;
-    workers_[id].arg = routLineArg;
+    workers_[id].arg = arg;
     workers_[id].state = RUNABLE;
 
     return id;
@@ -64,6 +84,19 @@ int Scheduler::create(Func func, void *arg)
 void Scheduler::resume(int id)
 {
     //std::cout << "resume worker " << id << "state: " << workers_[id].state << std::endl;
+    /*获取当前上下文，如果处于协程调用链的底层，则该resum是mainLoop调用的，上下文保存在loopCtx_中*/
+    ucontext_t * curCtx = NULL;
+    if (!callPath_->empty()) {
+        int curId = callPath_->top();
+        /*如果上级调用者不是mainLoop，则需要保存栈信息*/
+        saveCoStack(curId);
+        assert(runningWorker_ == curId);
+        curCtx = &workers_[curId].ctx;
+    } else {
+        curCtx = &loopCtx_;
+    }
+
+    callPath_->push(id);
     switch (workers_[id].state) {
         case RUNABLE:
             getcontext(&workers_[id].ctx);
@@ -71,22 +104,22 @@ void Scheduler::resume(int id)
             workers_[id].ctx.uc_stack.ss_sp = stack_;
             workers_[id].ctx.uc_stack.ss_size = kMaxStackSize;
             workers_[id].ctx.uc_sigmask = {0};
-            workers_[id].ctx.uc_link = &schedulerCtx_;
             runningWorker_ = id;
             workers_[id].state = RUNNING;
 
-            makecontext(&workers_[id].ctx, (void (*)(void))(&Scheduler::workerRoutline), 1, this);
-            swapcontext(&schedulerCtx_, &workers_[id].ctx);
+            makecontext(&workers_[id].ctx, (void (*)())(&Scheduler::workerRoutline), 1, this);
+            swapcontext(curCtx, &workers_[id].ctx);
 
             break;
 
         case SUSPEND:
-            //std::cout << "worker: " << id << " resume suspend" << std::endl;
-            memcpy(stack_+kMaxStackSize - workers_[id].stackSize, workers_[id].stack, workers_[id].stackSize);
+            /*
+             * 处于SUSPEND状态的协程需要拷贝栈信息，
+             * 通过运行在独立栈中的jumpToCo来拷贝,当上级调用者是mainLoop时其实可以不用
+             * */
             runningWorker_ = id;
             workers_[id].state = RUNNING;
-
-            swapcontext(&schedulerCtx_, &workers_[id].ctx);
+            swapcontext(curCtx, &switchCtx_);
 
             break;
 
@@ -103,9 +136,15 @@ State Scheduler::getStatus(int id)
 void Scheduler::saveCoStack(int id)
 {
     char dummy = 0;
+    /*
+     * 计算当协程已经使用的程栈大小
+     * 由于栈由高地址向低地址增长,stack_ + kMaxStackSize表示栈底
+     * dummy的地址代表栈顶
+     * */
     uint64_t size = stack_ + kMaxStackSize - &dummy;
     assert(size <= kMaxStackSize);
 
+    /*自动增长栈大小*/
     if (size > workers_[id].stackSize) {
         delete [] workers_[id].stack;
         workers_[id].stack = new char[size];
@@ -117,36 +156,69 @@ void Scheduler::saveCoStack(int id)
     memcpy(workers_[id].stack, &dummy, size);
 }
 
+/*
+ * 由于使用共享栈，非对称协程之间的调用要拷贝栈，
+ * 必须用一个运行于单独的栈空间的特殊函数来拷贝
+ * */
+void Scheduler::jumpToRunningCo()
+{
+    assert(runningWorker_ >= 0);
+    memcpy(stack_+kMaxStackSize - workers_[runningWorker_].stackSize, workers_[runningWorker_].stack, workers_[runningWorker_].stackSize);
+    setcontext(&workers_[runningWorker_].ctx);
+}
+
 void Scheduler::yeild()
 {
     if (runningWorker_ != -1) {
-        int id = runningWorker_;
-        runningWorker_ = -1;
-        workers_[id].state = SUSPEND;
-        saveCoStack(id);
-        swapcontext(&workers_[id].ctx, &schedulerCtx_);
+
+        int curId = callPath_->top();
+        assert(runningWorker_ == curId);
+        callPath_->pop();
+        int nextId;
+        if (!callPath_->empty()) {
+            nextId = callPath_->top();
+            runningWorker_ = nextId;
+        } else {
+            runningWorker_ = -1;
+        }
+
+        workers_[curId].state = SUSPEND;
+        saveCoStack(curId);
+        if (runningWorker_ == -1) {
+            /*跳转到mainLoop不需要进行栈拷贝*/
+            swapcontext(&workers_[curId].ctx, &loopCtx_);
+        } else {
+            swapcontext(&workers_[curId].ctx, &switchCtx_);
+        }
     }
 }
 
 void Scheduler::mainLoop()
 {
+    run_ = true;
     while (run_) {
-
-        for (int i = 0; i < kMaxCoroutlineNum; ++i) {
-            if (workers_[i].state == RUNABLE || workers_[i].state == SUSPEND) {
-                int id = i;
-                resume(id);
-            }
-        }
-
+        poller_->runPoll();
     }
+}
+
+void Scheduler::stopLoop()
+{
+    run_ = false;
 }
 
 void Scheduler::workerRoutline()
 {
     int id = runningWorker_;
-
     workers_[id].func(workers_[id].arg);
-    runningWorker_ = -1;
     workers_[id].state = FREE;
+    assert(runningWorker_ == callPath_->top());
+    callPath_->pop();
+    /*若上级调用者也是一个普通协程而不是mainLoop则要拷贝栈*/
+    if (!callPath_->empty()) {
+        runningWorker_ = callPath_->top();
+        setcontext(&switchCtx_);
+    } else {
+        runningWorker_ = -1;
+        setcontext(&loopCtx_);
+    }
 }

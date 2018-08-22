@@ -131,6 +131,21 @@ void PollPoller::runPoll()
     dealPendingFunctors();
 }
 
+void PollPoller::addChannel(Channel *ch)
+{
+    if (pollChannels_.end() != pollChannels_.find(ch->getFd()) ) {
+        pollChannels_.insert(std::pair<int,Channel*>(ch->getFd(), ch));
+    }
+}
+
+void PollPoller::removeChannel(Channel *ch)
+{
+    if (pollChannels_.end() != pollChannels_.find(ch->getFd())) {
+        pollChannels_.erase(ch->getFd());
+    }
+
+}
+
 void PollPoller::preparePollEvents()
 {
     pollfds_.clear();

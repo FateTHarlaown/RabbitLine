@@ -7,19 +7,23 @@
 
 #include <ucontext.h>
 #include <thread>
-#include <atomic>
-#include <mutex>
-#include <thread>
 #include <functional>
+#include <stack>
+#include "poller.h"
 
 class Scheduler;
 
+/*通过这个函数初始化并获取获取本线程的Scheduler*/
+extern Scheduler * getLocalScheduler();
+
+/*
 typedef struct args {
     Scheduler * sc;
     void * arg;
 } arg_t;
+ */
 
-using Func = void (*)(arg_t);
+using Func = void (*)(void * arg);
 //协程运行状态
 enum State {
     FREE,
@@ -33,11 +37,11 @@ static const int kDefaultStackSize = 1024 * 128;
 
 
 typedef struct coroutline {
-    std::atomic<State> state;
+    State state;
     ucontext_t ctx;
     char * stack;
     Func func;
-    arg_t arg;
+    void * arg;
     uint64_t stackSize;
     uint64_t stackCapacity;
 
@@ -65,14 +69,8 @@ public:
     Scheduler& operator=(const Scheduler&) = delete;
     ~Scheduler();
 
-    void startLoopInThread();
-
-    void stopLoop()
-    {
-        run_ = false;
-        loopThread.join();
-    }
-
+    void mainLoop();
+    void stopLoop();
     void yeild();
     int create(Func func, void * arg);
     void resume(int id);
@@ -80,9 +78,10 @@ public:
 
 private:
     void saveCoStack(int id);
-    void mainLoop();
+    void jumpToRunningCo();
     int getIdleWorker();
     void workerRoutline();
+    void initSwitchCtx();
 
 private:
     static const int kMaxCoroutlineNum = 10000;
@@ -90,11 +89,15 @@ private:
 
     coroutline_t * workers_;
     char * stack_;
-    std::thread loopThread;
-    std::mutex mu_;
-    std::atomic_bool run_;
+    std::stack<int> * callPath_;
+    bool run_;
     int runningWorker_;
-    ucontext_t schedulerCtx_;
+    ucontext_t loopCtx_;
+    ucontext_t switchCtx_;
+    bool switchInited_;
+    char * switchStack_;
+    Poller * poller_;
+
 };
 
 #endif //COROUTLINE_H
