@@ -168,7 +168,7 @@ void Scheduler::jumpToRunningCo()
     setcontext(&workers_[runningWorker_].ctx);
 }
 
-void Scheduler::yeild()
+void Scheduler::yield()
 {
     if (runningWorker_ != -1) {
 

@@ -71,7 +71,7 @@ public:
 
     void mainLoop();
     void stopLoop();
-    void yeild();
+    void yield();
     int create(Func func, void * arg);
     void resume(int id);
     State getStatus(int id);
