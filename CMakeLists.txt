@@ -8,7 +8,20 @@ set(CMAKE_CXX_STANDARD 11)
 
 set(CMAKE_BUILD_TYPE "Debug")
 
+
+set(SOURCE_FILES
+        coroutline.cpp
+        poller.cpp
+        poller.h
+        timers.h
+        timers.cpp
+        callbacks.h
+        syshook.cpp channel.cpp channel.h)
+
+add_library(co_static STATIC ${SOURCE_FILES})
+set_target_properties(co_static PROPERTIES OUTPUT_NAME co)
+
 link_libraries(pthread dl)
 
-set(SOURCE_FILES main.cpp coroutline.cpp poller.cpp poller.h timers.h timers.cpp callbacks.h syshook.cpp)
-add_executable(coroutline ${SOURCE_FILES})
+add_executable(coroutline main.cpp)
+target_link_libraries(coroutline co_static)

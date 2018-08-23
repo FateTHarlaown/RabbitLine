@@ -3,9 +3,18 @@
 #include "coroutline.h"
 #include "poller.h"
 
+void func4(void * arg)
+{
+    std::cout << "ggggggg" << std::endl;
+}
+
 void func3(void * arg)
 {
+    Scheduler * sc = getLocalScheduler();
     std::cout << "mmmmmmm" << std::endl;
+    int c4 = sc->create(func4, NULL);
+    sc->resume(c4);
+    std::cout << "ooooooo" << std::endl;
 }
 
 void func2(void * arg)
@@ -14,7 +23,7 @@ void func2(void * arg)
     int c3 = sc->create(func3, NULL);
     sc->resume(c3);
     std::cout << "uuuuuu" << std::endl;
-    sc->yeild();
+    sc->yield();
     std::cout << "zzzzzz" << std::endl;
 }
 
