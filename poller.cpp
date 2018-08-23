@@ -2,9 +2,9 @@
 // Created by NorSnow_ZJ on 2018/7/27.
 //
 
-#include "poller.h"
-#include <inttypes.h>
 #include <cassert>
+#include "poller.h"
+#include "channel.h"
 
 
 int64_t Poller::addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat, int interval)
@@ -88,27 +88,6 @@ void Poller::addPendingFunction(PendingCallbackFunc func)
     pendingFunctors_.push_back(func);
 }
 
-void  Channel::handleEvents()
-{
-    if (revents_ & kWriteEvent) {
-        if (writeCallbackFunc_) {
-            writeCallbackFunc_();
-        }
-    }
-
-    if (revents_ & kReadEvent) {
-        if (readCallbackFunc_) {
-            readCallbackFunc_();
-        }
-    }
-
-    if (revents_ & kErrorEvent) {
-        if (errorCallbackFunc_) {
-            errorCallbackFunc_();
-        }
-    }
-
-}
 
 void PollPoller::runPoll()
 {

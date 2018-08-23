@@ -15,92 +15,7 @@
 #include "callbacks.h"
 #include "timers.h"
 
-class Poller;
-
-class Channel
-{
-public:
-    Channel(Poller* po, int fd) : poller_(po), fd_(fd), events_(kNoEvent)
-    {
-    }
-
-    Channel(const Channel&) = delete;
-    Channel& operator=(const Channel&) = delete;
-
-    int getEvents()
-    {
-        return events_;
-    }
-
-    void setRevents(int revents)
-    {
-        revents_ = revents;
-    }
-
-    void enableWirte()
-    {
-        events_ |= kWriteEvent;
-    }
-
-    void enableRead()
-    {
-        events_ |= kReadEvent;
-    }
-
-    void disableWrite()
-    {
-        events_ &= ~kWriteEvent;
-    }
-
-    void disableRead()
-    {
-        events_ &= ~kReadEvent;
-    }
-
-    void clearEvents()
-    {
-        events_ = kNoEvent;
-    }
-
-    int getFd()
-    {
-        return fd_;
-    }
-
-    void addToPoller()
-    {
-        //poller_->addChannel(this);
-    }
-
-    void removeFromPoller()
-    {
-        //poller_->removeChannel(this);
-    }
-
-    void handleEvents();
-
-public:
-    const static int kNoEvent = 0;
-#ifdef  __linux__
-    const static int kReadEvent = EPOLLIN | EPOLLPRI;
-    const static int kWriteEvent = EPOLLOUT;
-    const static int kErrorEvent = EPOLLERR;
-#else
-    const static int kReadEvent = POLLIN | POLLPRI;
-    const static int kWriteEvent = POLLOUT;
-    const static int kErrorEvent = POLLERR;
-#endif
-
-private:
-    Poller * poller_;
-    int events_;
-    int revents_;
-    int fd_;
-    EventCallbackFunc readCallbackFunc_;
-    EventCallbackFunc writeCallbackFunc_;
-    EventCallbackFunc errorCallbackFunc_;
-};
-
+class Channel;
 //给协程库用的poller都是在一个线程用的，不用考虑并发
 class Poller
 {
@@ -152,6 +67,7 @@ private:
     std::unordered_map<int, Channel*> pollChannels_;
 };
 
+#ifdef __linux__
 //todo:finish it
 class EpollPoller : public Poller
 {
@@ -159,8 +75,7 @@ public:
 
 private:
 };
-
-
+#endif
 
 
 #endif //COROUTLINE_POLLER_H
