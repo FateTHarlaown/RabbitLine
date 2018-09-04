@@ -31,9 +31,14 @@ Timestamp Timestamp::now()
     return Timestamp(Timestamp::nowMicroSeconds());
 }
 
-Timestamp Timestamp::nowAfter(double seconds)
+Timestamp Timestamp::nowAfterSeconds(size_t seconds)
 {
     return Timestamp(Timestamp::nowMicroSeconds() + kMicroSecondsPerSecond * seconds);
+}
+
+Timestamp Timestamp::nowAfterMilliSeconds(size_t Milliseconds)
+{
+    return Timestamp(Timestamp::nowMicroSeconds() + kMicroSecondsPerMilliSecond * Milliseconds);
 }
 
 double Timestamp::nowMicroSeconds()
@@ -57,7 +62,7 @@ bool operator==(Timestamp l, Timestamp r)
 void Timer::reset()
 {
     if (repeat_) {
-        expirationTime_ = Timestamp::nowAfter(interval_);
+        expirationTime_ = Timestamp::nowAfterMilliSeconds(interval_);
     }
 }
 
@@ -69,6 +74,11 @@ void Timer::run()
 bool Timer::isRepeat()
 {
     return repeat_;
+}
+
+int64_t Timer::getTimerid()
+{
+    return timerid_;
 }
 
 Timestamp Timer::getExpiration()

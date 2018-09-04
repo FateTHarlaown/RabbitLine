@@ -10,6 +10,11 @@ int Channel::getEvents()
     return events_;
 }
 
+int Channel::getRevents()
+{
+    return revents_;
+}
+
 void Channel::setRevents(int revents)
 {
     revents_ = revents;
@@ -38,6 +43,21 @@ void Channel::disableRead()
 void Channel::clearEvents()
 {
     events_ = kNoEvent;
+}
+
+void Channel::setReadCallbackFunc(EventCallbackFunc func)
+{
+    readCallbackFunc_ = func;
+}
+
+void Channel::setWriteCallbackFunc(EventCallbackFunc func)
+{
+    writeCallbackFunc_ = func;
+}
+
+void Channel::setErrorCallbackFunc(EventCallbackFunc func)
+{
+    errorCallbackFunc_ = func;
 }
 
 int Channel::getFd()

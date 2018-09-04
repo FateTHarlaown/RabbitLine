@@ -15,7 +15,12 @@
 #include "callbacks.h"
 #include "timers.h"
 
+
 class Channel;
+class Poller;
+
+Poller * getLocalPoller();
+
 //给协程库用的poller都是在一个线程用的，不用考虑并发
 class Poller
 {

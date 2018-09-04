@@ -24,12 +24,16 @@ public:
     Channel& operator=(const Channel&) = delete;
 
     int getEvents();
+    int getRevents();
     void setRevents(int revents);
     void enableWirte();
     void enableRead();
     void disableWrite();
     void disableRead();
     void clearEvents();
+    void setReadCallbackFunc(EventCallbackFunc func);
+    void setWriteCallbackFunc(EventCallbackFunc func);
+    void setErrorCallbackFunc(EventCallbackFunc func);
     int getFd();
     void addToPoller();
     void removeFromPoller();
@@ -44,7 +48,7 @@ public:
 #else
     const static int kReadEvent = POLLIN | POLLPRI;
     const static int kWriteEvent = POLLOUT;
-    const static int kErrorEvent = POLLERR;
+    const static int kErrorEvent = POLLERR | POLLHUP;
 #endif
 
 private:

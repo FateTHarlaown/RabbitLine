@@ -7,7 +7,7 @@
 #include <iostream>
 #include "coroutline.h"
 
-__thread Scheduler * localScheduler = NULL;
+__thread static Scheduler * localScheduler = NULL;
 
 Scheduler * getLocalScheduler()
 {
@@ -23,18 +23,18 @@ Scheduler::Scheduler() : runningWorker_(-1), run_(false), switchInited_(false)
     workers_ = new coroutline_t[kMaxCoroutlineNum];
     stack_ = new char[kMaxStackSize];
 
-    for (int i = 0; i < kMaxCoroutlineNum; ++i) {
+    for (int i = 0; i < kMaxCoroutlineNum; ++i)
+    {
         workers_->state = FREE;
     }
 
     callPath_ = new std::stack<int>();
     switchStack_ = new char[1024];
-
-    poller_ = new PollPoller();}
+    poller_ = getLocalPoller();
+}
 
 Scheduler::~Scheduler()
 {
-    delete poller_;
     delete [] switchStack_;
     delete callPath_;
     delete [] workers_;
@@ -125,6 +125,7 @@ void Scheduler::resume(int id)
             break;
 
         default:
+            assert(0);
             break;
     }
 }
@@ -132,6 +133,11 @@ void Scheduler::resume(int id)
 State Scheduler::getStatus(int id)
 {
     return workers_[id].state;
+}
+
+int Scheduler::getRunningWoker()
+{
+    return runningWorker_;
 }
 
 void Scheduler::saveCoStack(int id)

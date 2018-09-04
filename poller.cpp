@@ -3,9 +3,21 @@
 //
 
 #include <cassert>
+#include <iostream>
 #include "poller.h"
 #include "channel.h"
 
+static __thread Poller * localPoller = NULL;
+
+Poller * getLocalPoller()
+{
+    if (!localPoller) {
+        //todo:在linux下使用EpollPoller
+        localPoller = new PollPoller();
+    }
+
+    return localPoller;
+}
 
 int64_t Poller::addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat, int interval)
 {
@@ -13,8 +25,8 @@ int64_t Poller::addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback,
         return -1;
     }
 
-    Timer * timer = new Timer(expirationTime, callback, repeat, interval);
     int64_t timerSeq = seq_++;
+    Timer * timer = new Timer(expirationTime, callback, timerSeq, repeat, interval);
     waitingTimers_.insert(std::pair<int64_t , Timer*>(timerSeq, timer));
     timers_.insert(std::pair<Timestamp, Timer*>(expirationTime, timer));
 
@@ -68,10 +80,18 @@ void Poller::getExpiredTimers()
 void Poller::dealExpiredTimers()
 {
     for (const auto& t: timeOutQue_) {
+        /*这个必须在run的前面！*/
+        if (!t.second->isRepeat()) {
+            waitingTimers_.erase(t.second->getTimerid());
+        }
+
         t.second->run();
+
         if (t.second->isRepeat()) {
             t.second->reset();
             timers_.insert(std::pair<Timestamp, Timer*>(t.second->getExpiration(), t.second));
+        } else {
+            delete t.second;
         }
     }
 }
@@ -96,14 +116,15 @@ void PollPoller::runPoll()
     int ret = poll(pollfds_.data(), pollfds_.size(), kIntervalTime);
     if (ret < 0) {
         perror("poll error");
+        std::cout << "ret is " << ret << std::endl;
     }
 
     //提取有事件发生的Channel
     getActiveChannels();
-    //提取到期的定时器事件
-    getExpiredTimers();
     //处理channel上的事件
     handleEvents();
+    //提取到期的定时器事件
+    getExpiredTimers();
     //处理定时器事件
     dealExpiredTimers();
     //处理挂起的任务
@@ -112,7 +133,7 @@ void PollPoller::runPoll()
 
 void PollPoller::addChannel(Channel *ch)
 {
-    if (pollChannels_.end() != pollChannels_.find(ch->getFd()) ) {
+    if (pollChannels_.end() == pollChannels_.find(ch->getFd()) ) {
         pollChannels_.insert(std::pair<int,Channel*>(ch->getFd(), ch));
     }
 }
@@ -133,6 +154,7 @@ void PollPoller::preparePollEvents()
         ev.fd = p.first;
         ev.events = (short)p.second->getEvents();
         pollfds_.push_back(ev);
+        p.second->setRevents(Channel::kNoEvent);
     }
 }
 

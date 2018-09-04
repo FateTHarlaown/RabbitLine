@@ -73,6 +73,7 @@ public:
     void stopLoop();
     void yield();
     int create(Func func, void * arg);
+    int getRunningWoker();
     void resume(int id);
     State getStatus(int id);
 

@@ -59,8 +59,8 @@ int main()
     sc->resume(c1);
     /*
     Poller * p = new PollPoller();
-    p->addTimer(Timestamp::nowAfter(1), timer1, true, 3);
-    p->addTimer(Timestamp::nowAfter(5), timer2, true, 5);
+    p->addTimer(Timestamp::nowAfter(1), timer1, true, 3000);
+    p->addTimer(Timestamp::nowAfter(5), timer2, true, 5000);
     while (1) {
         p->runPoll();
     }
