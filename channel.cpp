@@ -45,6 +45,13 @@ void Channel::clearEvents()
     events_ = kNoEvent;
 }
 
+void Channel::clearCallbacks()
+{
+    readCallbackFunc_ = nullptr;
+    writeCallbackFunc_ = nullptr;
+    errorCallbackFunc_ = nullptr;
+}
+
 void Channel::setReadCallbackFunc(EventCallbackFunc func)
 {
     readCallbackFunc_ = func;

@@ -9,6 +9,7 @@
 #include <poll.h>
 #include <fcntl.h>
 #include <string.h>
+#include <assert.h>
 #include <unordered_map>
 #include <iostream>
 #include "coroutline.h"
@@ -24,6 +25,9 @@ typedef struct fdinfo {
 } fdinfo_t;
 
 static std::unordered_map<int, fdinfo_t*> fdMap;
+
+static const int kWaitReadEventType = 0;
+static const int kWaitWriteEventType = 1;
 
 using sys_read_ptr = ssize_t (*)(int fd, void* buf, size_t nbyte);
 using sys_write_ptr= ssize_t (*)(int fd, const void* buf, size_t nbyte);
@@ -46,6 +50,7 @@ static sys_setsockopt_ptr  sys_setsockopt = (sys_setsockopt_ptr)dlsym(RTLD_NEXT,
 
 static fdinfo_t * getFdInfo(int fd);
 static fdinfo_t * allocFdInfo(int fd);
+static void waitUntilEventOrTimeout(int fd, int waitType);
 static void freeFdInfo(int fd);
 
 int socket(int domain, int type, int protocol)
@@ -73,20 +78,7 @@ int co_accept(int fd, struct sockaddr *addr, socklen_t *len)
     }
 
 
-    Scheduler * sc = getLocalScheduler();
-    Poller * po = getLocalPoller();
-    Channel * ch = fdMap[fd]->ch;
-    ch->enableRead();
-    ch->addToPoller();
-    ch->setReadCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-    ch->setErrorCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-    int64_t  timerid = po->addTimer(Timestamp::nowAfterMilliSeconds(info->readTimeout),
-                                    std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-    sc->yield();
-
-    ch->disableRead();
-    ch->removeFromPoller();
-    po->removeTimer(timerid);
+    waitUntilEventOrTimeout(fd, kWaitReadEventType);
 
     int cli = accept(fd, addr, len);
     if (cli < 0) {
@@ -123,21 +115,7 @@ ssize_t read(int fd, void * buf, size_t nbyte)
         return sys_read(fd, buf, nbyte);
     }
 
-    /*加入可读回调让出使用权直到可读或超时被唤醒*/
-    Scheduler * sc = getLocalScheduler();
-    Poller * po = getLocalPoller();
-    Channel * ch = fdMap[fd]->ch;
-    ch->enableRead();
-    ch->addToPoller();
-    ch->setReadCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-    ch->setErrorCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-    int64_t  timerid = po->addTimer(Timestamp::nowAfterMilliSeconds(info->readTimeout),
-                                     std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-    sc->yield();
-
-    ch->disableRead();
-    ch->removeFromPoller();
-    po->removeTimer(timerid);
+    waitUntilEventOrTimeout(fd, kWaitReadEventType);
 
     return sys_read(fd, buf, nbyte);
 }
@@ -150,9 +128,6 @@ ssize_t write(int fd, const void * buf, size_t nbyte)
         return sys_write(fd, buf, nbyte);
     }
 
-    Scheduler * sc = getLocalScheduler();
-    Poller * po = getLocalPoller();
-    Channel * ch = fdMap[fd]->ch;
 
     ssize_t ret = sys_write(fd, buf, nbyte);
     if (ret == 0) {
@@ -162,20 +137,7 @@ ssize_t write(int fd, const void * buf, size_t nbyte)
     ssize_t writed = ret > 0 ? ret : 0;
     /*一直到发送完成所有数据或者出现错误为止*/
     while (writed < nbyte) {
-        ch->enableWirte();
-        ch->addToPoller();
-
-        /*加入可写回调让出使用权直到可写或超时被唤醒*/
-        ch->setWriteCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-        ch->setErrorCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-        int64_t  timerid = po->addTimer(Timestamp::nowAfterMilliSeconds(info->writeTimeout),
-                                        std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-        sc->yield();
-
-        ch->disableWrite();
-        ch->removeFromPoller();
-        po->removeTimer(timerid);
-
+        waitUntilEventOrTimeout(fd, kWaitWriteEventType);
         ret = sys_write(fd, buf+writed, nbyte-writed);
         if (ret <= 0) {
             break;
@@ -212,21 +174,10 @@ int connect(int fd, const struct sockaddr *address, socklen_t address_len)
         return ret;
     }
 
-    Scheduler * sc = getLocalScheduler();
-    Poller * po = getLocalPoller();
-    Channel * ch = fdMap[fd]->ch;
+    Channel * ch = info->ch;
     /*等待连接成功，最多尝试等待3次，每次25秒超时*/
     for (int i = 0; i < 3; ++i) {
-        ch->enableRead();
-        ch->addToPoller();
-        ch->setWriteCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-        ch->setErrorCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-        int64_t  timerid = po->addTimer(Timestamp::nowAfterMilliSeconds(info->readTimeout),
-                                        std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
-        sc->yield();
-
-        ch->removeFromPoller();
-        po->removeTimer(timerid);
+        waitUntilEventOrTimeout(fd, kWaitReadEventType);
         /*连接成功*/
         if (ch->getRevents() & POLLOUT) {
             errno = 0;
@@ -357,6 +308,39 @@ fdinfo_t * allocFdInfo(int fd)
     }
 
     return NULL;
+}
+
+void waitUntilEventOrTimeout(int fd, int waitType)
+{
+    Scheduler * sc = getLocalScheduler();
+    Poller * po = getLocalPoller();
+    fdinfo * info = getFdInfo(fd);
+    /*调用者必须保证这个fd已经分配*/
+    assert(info);
+    Channel * ch = info->ch;
+
+    ch->clearEvents();
+    ch->clearCallbacks();
+    if (waitType == kWaitReadEventType) {
+        ch->enableRead();
+        ch->setReadCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
+    } else if (waitType == kWaitWriteEventType) {
+        ch->enableWirte();
+        ch->setWriteCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
+    } else {
+        assert(0);
+    }
+
+    ch->setErrorCallbackFunc(std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
+    ch->addToPoller();
+    int64_t  timerid = po->addTimer(Timestamp::nowAfterMilliSeconds(info->readTimeout),
+                                    std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
+    sc->yield();
+
+    ch->clearEvents();
+    ch->clearCallbacks();
+    ch->removeFromPoller();
+    po->removeTimer(timerid);
 }
 
 void freeFdInfo(int fd)

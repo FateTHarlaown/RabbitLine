@@ -31,6 +31,7 @@ public:
     void disableWrite();
     void disableRead();
     void clearEvents();
+    void clearCallbacks();
     void setReadCallbackFunc(EventCallbackFunc func);
     void setWriteCallbackFunc(EventCallbackFunc func);
     void setErrorCallbackFunc(EventCallbackFunc func);
