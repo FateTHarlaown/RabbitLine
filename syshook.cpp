@@ -336,8 +336,8 @@ void waitUntilEventOrTimeout(int fd, int waitType)
     int64_t  timerid = po->addTimer(Timestamp::nowAfterMilliSeconds(info->readTimeout),
                                     std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
     sc->yield();
-
-    ch->clearEvents();
+    /*这个函数结尾不应该调用ch->clearEvents()，
+     *因为被唤醒的协程可能还想要知道发生了什么事件*/
     ch->clearCallbacks();
     ch->removeFromPoller();
     po->removeTimer(timerid);
