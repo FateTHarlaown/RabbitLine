@@ -55,7 +55,7 @@ static void freeFdInfo(int fd);
 
 int socket(int domain, int type, int protocol)
 {
-    std::cout << "call my socket! " << std::endl;
+    //std::cout << "call my socket! " << std::endl;
     int fd = sys_socket(domain, type, protocol);
     if (fd < 0) {
         return fd;
@@ -93,7 +93,7 @@ int co_accept(int fd, struct sockaddr *addr, socklen_t *len)
 int setsockopt(int fd, int level, int option_name,
                const void *option_value, socklen_t option_len)
 {
-    std::cout << "call my setsocketopt! " << std::endl;
+    //std::cout << "call my setsocketopt! " << std::endl;
     fdinfo * info = getFdInfo(fd);
     if (info && level == SOL_SOCKET) {
         struct timeval * val = (struct timeval *)(option_value);
@@ -109,7 +109,7 @@ int setsockopt(int fd, int level, int option_name,
 
 ssize_t read(int fd, void * buf, size_t nbyte)
 {
-    std::cout << "call my read! " << std::endl;
+    //std::cout << "call my read! " << std::endl;
     fdinfo * info = getFdInfo(fd);
     if (!info || (O_NONBLOCK & info->userFlag)) {
         return sys_read(fd, buf, nbyte);
@@ -122,7 +122,7 @@ ssize_t read(int fd, void * buf, size_t nbyte)
 
 ssize_t write(int fd, const void * buf, size_t nbyte)
 {
-    std::cout << "call my write! " << std::endl;
+    //std::cout << "call my write! " << std::endl;
     fdinfo * info = getFdInfo(fd);
     if (!info || (O_NONBLOCK & info->userFlag)) {
         return sys_write(fd, buf, nbyte);
@@ -203,7 +203,7 @@ int connect(int fd, const struct sockaddr *address, socklen_t address_len)
 
 int fcntl(int feilds, int cmd, ...)
 {
-    std::cout << "call my fcntl" << std::endl;
+    //std::cout << "call my fcntl" << std::endl;
     if (feilds < 0) {
         return __LINE__;
     }

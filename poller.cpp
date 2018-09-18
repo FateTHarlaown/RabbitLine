@@ -4,6 +4,7 @@
 
 #include <cassert>
 #include <iostream>
+#include <unistd.h>
 #include "poller.h"
 #include "channel.h"
 
@@ -12,8 +13,11 @@ static __thread Poller * localPoller = NULL;
 Poller * getLocalPoller()
 {
     if (!localPoller) {
-        //todo:在linux下使用EpollPoller
+#ifdef __linux__
+       localPoller = new EpollPoller();
+#else
         localPoller = new PollPoller();
+#endif
     }
 
     return localPoller;
@@ -63,6 +67,13 @@ Poller::~Poller()
         if (p.second) {
             delete p.second;
         }
+    }
+}
+
+void Poller::handleEvents()
+{
+    for (const auto& c: activeChannels_) {
+        c->handleEvents();
     }
 }
 
@@ -116,7 +127,7 @@ void PollPoller::runPoll()
     int ret = poll(pollfds_.data(), pollfds_.size(), kIntervalTime);
     if (ret < 0) {
         perror("poll error");
-        std::cout << "ret is " << ret << std::endl;
+        //std::cout << "ret is " << ret << std::endl;
     }
 
     //提取有事件发生的Channel
@@ -174,11 +185,84 @@ void PollPoller::getActiveChannels()
     }
 }
 
-void PollPoller::handleEvents()
+EpollPoller::EpollPoller() : activeChannelInThisTurn_(0)
 {
-    for (const auto& c: activeChannels_) {
-        c->handleEvents();
+    int epollfd = epoll_create(5);
+    if (epollfd < 0) {
+        perror("epoll create failed!");
+        exit(2);
+    }
+    epollFd_ = epollfd;
+    eventList_.resize(kInitEnventNum);
+}
+
+EpollPoller::~EpollPoller()
+{
+
+}
+
+void EpollPoller::runPoll()
+{
+    int ret = epoll_wait(epollFd_, &(*eventList_.begin()), eventList_.size(), kIntervalTime);
+    //std::cout << "epoll trun!" << std::endl;
+    if (ret == -1) {
+        perror("epoll_wait error!");
+        return;
+    }
+    activeChannelInThisTurn_ = ret;
+    //提取有事件发生的Channel
+    getActiveChannels();
+    //处理channel上的事件
+    handleEvents();
+    //提取到期的定时器事件
+    getExpiredTimers();
+    //处理定时器事件
+    dealExpiredTimers();
+    //处理挂起的任务
+    dealPendingFunctors();
+
+    if (eventList_.size() == activeChannelInThisTurn_) {
+        eventList_.resize(2*activeChannelInThisTurn_);
     }
 }
 
+void EpollPoller::addChannel(Channel *ch)
+{
+    if (!ch->isAddedToPoller()) {
+        struct epoll_event event;
+        event.data.ptr = static_cast<void*>(ch);
+        event.events = ch->getEvents();
+        epoll_ctl(epollFd_, kAddOperation, ch->getFd(), &event);
+    }
+}
+
+void EpollPoller::removeChannel(Channel *ch)
+{
+    if (ch->isAddedToPoller()) {
+        struct epoll_event event;
+        event.data.ptr = static_cast<void*>(ch);
+        event.events = ch->getEvents();
+        epoll_ctl(epollFd_, kModOperation, ch->getFd(), &event);
+    }
+}
+
+void EpollPoller::updateChannel(Channel *ch)
+{
+    if (ch->isAddedToPoller()) {
+        struct epoll_event event;
+        event.data.ptr = static_cast<void*>(ch);
+        event.events = ch->getEvents();
+        epoll_ctl(epollFd_, kDelOperation, ch->getFd(), &event);
+    }
+}
+
+void EpollPoller::getActiveChannels()
+{
+    activeChannels_.clear();
+    for (int i = 0; i < activeChannelInThisTurn_; i++) {
+        Channel * ch = static_cast<Channel*>(eventList_[i].data.ptr);
+        ch->setRevents(eventList_[i].events);
+        activeChannels_.push_back(ch);
+    }
+}
 

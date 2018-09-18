@@ -34,18 +34,22 @@ public:
     virtual void runPoll() = 0;
     virtual void addChannel(Channel* ch) = 0;
     virtual void removeChannel(Channel* ch) = 0;
+    virtual void updateChannel(Channel* ch) = 0;
     virtual ~Poller();
     int64_t addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat = false, int interval = 0);
     void removeTimer(int64_t seq);
     void addPendingFunction(PendingCallbackFunc func);
 
 protected:
+    virtual void getActiveChannels() = 0;
+    virtual void handleEvents();
     void getExpiredTimers();
     void dealExpiredTimers();
     void dealPendingFunctors();
 
 protected:
-    static const int kIntervalTime = 1;
+    //1000 ms for debug
+    static const int kIntervalTime = 1000;
     int64_t seq_;
     std::vector<Channel*> activeChannels_;
     std::multimap<Timestamp, Timer*> timers_;
@@ -60,11 +64,13 @@ public:
     virtual void runPoll();
     virtual void addChannel(Channel* ch);
     virtual void removeChannel(Channel* ch);
+    virtual void updateChannel(Channel* ch) {};
+
+protected:
+    virtual void getActiveChannels();
 
 private:
-    void getActiveChannels();
     void preparePollEvents();
-    void handleEvents();
 
 private:
     std::vector<struct pollfd> pollfds_;
@@ -72,15 +78,32 @@ private:
     std::unordered_map<int, Channel*> pollChannels_;
 };
 
-#ifdef __linux__
+//#ifdef __linux__
 //todo:finish it
 class EpollPoller : public Poller
 {
 public:
+    EpollPoller();
+    virtual ~EpollPoller();
+    virtual void runPoll();
+    virtual void addChannel(Channel* ch);
+    virtual void removeChannel(Channel* ch);
+    virtual void updateChannel(Channel* ch);
+
+protected:
+    virtual void getActiveChannels();
 
 private:
+    const static int kAddOperation = EPOLL_CTL_ADD;
+    const static int kDelOperation = EPOLL_CTL_DEL;
+    const static int kModOperation = EPOLL_CTL_MOD;
+    const static int kInitEnventNum = 255;
+
+    int epollFd_;
+    int activeChannelInThisTurn_;
+    std::vector<struct epoll_event> eventList_;
 };
-#endif
+//#endif
 
 
 #endif //COROUTLINE_POLLER_H

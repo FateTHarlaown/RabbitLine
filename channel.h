@@ -16,15 +16,14 @@ class Poller;
 class Channel
 {
 public:
-    Channel(Poller* po, int fd) : poller_(po), fd_(fd), events_(kNoEvent)
-    {
-    }
+    Channel(Poller* po, int fd);
 
     Channel(const Channel&) = delete;
     Channel& operator=(const Channel&) = delete;
 
     int getEvents();
     int getRevents();
+    bool isAddedToPoller();
     void setRevents(int revents);
     void enableWirte();
     void enableRead();
@@ -38,6 +37,7 @@ public:
     int getFd();
     void addToPoller();
     void removeFromPoller();
+    void updateToChannel();
     void handleEvents();
 
 public:
@@ -54,6 +54,7 @@ public:
 
 private:
     Poller * poller_;
+    bool isAddedToPoller_;
     int events_;
     int revents_;
     int fd_;

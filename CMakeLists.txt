@@ -23,8 +23,8 @@ set_target_properties(co_static PROPERTIES OUTPUT_NAME co)
 
 link_libraries(pthread dl)
 
-add_executable(coroutline example_basic.cpp)
-target_link_libraries(coroutline co_static dl)
+add_executable(example_basic example_basic.cpp)
+target_link_libraries(example_basic co_static dl)
 
 add_executable(example_echo_server example_echo_server.cpp)
 target_link_libraries(example_echo_server co_static dl)
