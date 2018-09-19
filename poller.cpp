@@ -8,7 +8,7 @@
 #include "poller.h"
 #include "channel.h"
 
-static __thread Poller * localPoller = NULL;
+__thread Poller * localPoller = NULL;
 
 Poller * getLocalPoller()
 {

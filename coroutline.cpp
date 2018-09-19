@@ -7,7 +7,7 @@
 #include <iostream>
 #include "coroutline.h"
 
-__thread static Scheduler * localScheduler = NULL;
+__thread Scheduler * localScheduler = NULL;
 
 Scheduler * getLocalScheduler()
 {
@@ -49,7 +49,7 @@ void Scheduler::initSwitchCtx()
     switchCtx_.uc_sigmask = {0};
     /*这个上下文在中途就会跳转，绝不会执行完*/
     switchCtx_.uc_link = NULL;
-    makecontext(&switchCtx_, (void (*)())(&Scheduler::jumpToRunningCo), 1, this);
+    makecontext(&switchCtx_, reinterpret_cast<void (*)()>(&Scheduler::jumpToRunningCo), 1, this);
     switchInited_ = true;
 }
 
@@ -108,7 +108,7 @@ void Scheduler::resume(int id)
             runningWorker_ = id;
             workers_[id].state = RUNNING;
 
-            makecontext(&workers_[id].ctx, (void (*)())(&Scheduler::workerRoutline), 1, this);
+            makecontext(&workers_[id].ctx, reinterpret_cast<void (*)()>(&Scheduler::workerRoutline), 1, this);
             swapcontext(curCtx, &workers_[id].ctx);
 
             break;
