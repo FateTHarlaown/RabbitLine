@@ -2,8 +2,8 @@
 // Created by NorSnow_ZJ on 2018/9/25.
 //
 
-#ifndef COROUTLINE_RABBITLINE_H_H
-#define COROUTLINE_RABBITLINE_H_H
+#ifndef RABBITLINE_H
+#define RABBITLINE_H
 
 #include "coroutline.h"
 
@@ -61,4 +61,4 @@ void removeTimer(int64_t seq);
 
 }
 
-#endif //COROUTLINE_RABBITLINE_H_H
+#endif //RABBITLINE_H

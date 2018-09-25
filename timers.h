@@ -2,8 +2,8 @@
 // Created by NorSnow_ZJ on 2018/8/1.
 //
 
-#ifndef COROUTLINE_TIMERS_H
-#define COROUTLINE_TIMERS_H
+#ifndef RABBITLINE_TIMERS_H
+#define RABBITLINE_TIMERS_H
 
 #include <sys/types.h>
 #include "callbacks.h"
@@ -70,5 +70,5 @@ private:
 
 }
 
-#endif //COROUTLINE_TIMERS_H
+#endif //RABBITLINE_TIMERS_H
 

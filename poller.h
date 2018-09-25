@@ -2,8 +2,8 @@
 // Created by NorSnow_ZJ on 2018/7/27.
 //
 
-#ifndef COROUTLINE_POLLER_H
-#define COROUTLINE_POLLER_H
+#ifndef RABBITLINE_POLLER_H
+#define RABBITLINE_POLLER_H
 
 #include <poll.h>
 #ifdef __linux__
@@ -114,5 +114,5 @@ private:
 
 }
 
-#endif //COROUTLINE_POLLER_H
+#endif //RABBITLINE_POLLER_H
 

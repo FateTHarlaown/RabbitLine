@@ -2,8 +2,8 @@
 // Created by NorSnow_ZJ on 2018/7/5.
 //
 
-#ifndef COROUTLINE_H
-#define COROUTLINE_H
+#ifndef RABBITLINE_COROUTLINE_H
+#define RABBITLINE_COROUTLINE_H
 
 #include <ucontext.h>
 #include <thread>
@@ -101,4 +101,4 @@ private:
 
 }
 
-#endif //COROUTLINE_H
+#endif //RABBITLINE_COROUTLINE_H

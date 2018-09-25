@@ -2,8 +2,8 @@
 // Created by NorSnow_ZJ on 2018/8/23.
 //
 
-#ifndef COROUTLINE_CHANNEL_H
-#define COROUTLINE_CHANNEL_H
+#ifndef RABBITLINE_CHANNEL_H
+#define RABBITLINE_CHANNEL_H
 
 #include <poll.h>
 #include "callbacks.h"
@@ -65,4 +65,6 @@ private:
 };
 
 }
-#endif //COROUTLINE_CHANNEL_H
+
+#endif //RABBITLINE_CHANNEL_H
+
