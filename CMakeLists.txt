@@ -16,9 +16,14 @@ set(SOURCE_FILES
         timers.h
         timers.cpp
         callbacks.h
-        syshook.cpp channel.cpp channel.h)
+        syshook.cpp
+        channel.cpp
+        channel.h
+        rabbitline.h
+        rabbitline.cpp
+        example_timer.cpp)
 
-add_library(co_static STATIC ${SOURCE_FILES})
+add_library(co_static STATIC ${SOURCE_FILES} rabbitline.cpp)
 set_target_properties(co_static PROPERTIES OUTPUT_NAME co)
 
 link_libraries(pthread dl)
@@ -28,3 +33,6 @@ target_link_libraries(example_basic co_static dl)
 
 add_executable(example_echo_server example_echo_server.cpp)
 target_link_libraries(example_echo_server co_static dl)
+
+add_executable(example_timer example_timer.cpp)
+target_link_libraries(example_timer co_static dl)

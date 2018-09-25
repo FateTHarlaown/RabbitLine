@@ -8,8 +8,7 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <iostream>
-#include "coroutline.h"
-
+#include "rabbitline.h"
 
 extern int enableHook();
 extern int co_accept(int fd, struct sockaddr *addr, socklen_t *len);
@@ -76,11 +75,9 @@ static int CreateTcpSocket(const unsigned short shPort /* = 0 */,const char *psz
 
 
 
-void io_routline(void * arg)
+void io_routline(int cli)
 {
-    enableHook();
-    int cli = *(int*)(arg);
-    delete (int*)arg;
+    RabbitLine::enableHook();
     char * buf = new char[99999];
     std::cout << "into io line! start to ehco!" << std::endl;
     while (1) {
@@ -106,10 +103,9 @@ void io_routline(void * arg)
     close(cli);
 }
 
-void accept_routline(void * arg)
+void accept_routline()
 {
-    enableHook();
-    Scheduler * sc = getLocalScheduler();
+    RabbitLine::enableHook();
     std::cout << "into accet line!" << std::endl;
     while (1) {
         std::cout << "begin to accept" << std::endl;
@@ -118,16 +114,15 @@ void accept_routline(void * arg)
             continue;
         }
         SetNonBlock(cli);
-        int * arg = new int(cli);
         //std::cout << "a cli " << cli << " connect! start create his io_roultline!" << std::endl;
-        int io = sc->create(io_routline, (void*)arg);
-        sc->resume(io);
+        int io = RabbitLine::create(std::bind(io_routline, cli));
+        RabbitLine::resume(io);
     }
 }
 
 int main()
 {
-    enableHook();
+    RabbitLine::enableHook();
     listenFd = CreateTcpSocket(54321, INADDR_ANY, true);
     listen(listenFd, 1024);
 
@@ -137,9 +132,8 @@ int main()
     }
 
     SetNonBlock(listenFd);
-    Scheduler * sc = getLocalScheduler();
     std::cout << "start listen, begin ti create accept routline!" << std::endl;
-    int ac = sc->create(accept_routline, NULL);
-    sc->resume(ac);
-    sc->mainLoop();
+    int ac = RabbitLine::create(accept_routline);
+    RabbitLine::resume(ac);
+    RabbitLine::eventLoop();
 }

@@ -8,9 +8,11 @@
 #include "poller.h"
 #include "channel.h"
 
+using namespace RabbitLine;
+
 __thread Poller * localPoller = NULL;
 
-Poller * getLocalPoller()
+Poller * RabbitLine::getLocalPoller()
 {
     if (!localPoller) {
 #ifdef __linux__

@@ -11,21 +11,18 @@
 #include <stack>
 #include "poller.h"
 
+namespace RabbitLine
+{
+
 class Scheduler;
 
 /*通过这个函数初始化并获取获取本线程的Scheduler*/
-extern Scheduler * getLocalScheduler();
+extern Scheduler *getLocalScheduler();
 
-/*
-typedef struct args {
-    Scheduler * sc;
-    void * arg;
-} arg_t;
- */
-
-using Func = void (*)(void * arg);
+using Func = std::function<void()>;
 //协程运行状态
-enum State {
+enum State
+{
     FREE,
     RUNABLE,
     RUNNING,
@@ -36,17 +33,18 @@ enum State {
 static const int kDefaultStackSize = 1024 * 128;
 
 
-typedef struct coroutline {
+typedef struct coroutline
+{
     State state;
     ucontext_t ctx;
-    char * stack;
+    char *stack;
     Func func;
-    void * arg;
     uint64_t stackSize;
     uint64_t stackCapacity;
 
-    coroutline(const coroutline&) = delete;
-    coroutline& operator=(const coroutline&) = delete;
+    coroutline(const coroutline &) = delete;
+
+    coroutline &operator=(const coroutline &) = delete;
 
     coroutline() : stack(nullptr), stackSize(0), stackCapacity(kDefaultStackSize)
     {
@@ -55,8 +53,9 @@ typedef struct coroutline {
 
     ~coroutline()
     {
-        if (stackCapacity > 0) {
-            delete [] stack;
+        if (stackCapacity > 0)
+        {
+            delete[] stack;
         }
     }
 } coroutline_t;
@@ -65,14 +64,13 @@ class Scheduler
 {
 public:
     Scheduler();
-    Scheduler(const Scheduler&) = delete;
-    Scheduler& operator=(const Scheduler&) = delete;
+    Scheduler(const Scheduler &) = delete;
+    Scheduler &operator=(const Scheduler &) = delete;
     ~Scheduler();
-
     void mainLoop();
     void stopLoop();
     void yield();
-    int create(Func func, void * arg);
+    int create(Func func);
     int getRunningWoker();
     void resume(int id);
     State getStatus(int id);
@@ -88,17 +86,19 @@ private:
     static const int kMaxCoroutlineNum = 10000;
     static const uint64_t kMaxStackSize = 1024 * 1024;
 
-    coroutline_t * workers_;
-    char * stack_;
-    std::stack<int> * callPath_;
+    coroutline_t *workers_;
+    char *stack_;
+    std::stack<int> *callPath_;
     bool run_;
     int runningWorker_;
     ucontext_t loopCtx_;
     ucontext_t switchCtx_;
     bool switchInited_;
-    char * switchStack_;
-    Poller * poller_;
+    char *switchStack_;
+    Poller *poller_;
 
 };
+
+}
 
 #endif //COROUTLINE_H

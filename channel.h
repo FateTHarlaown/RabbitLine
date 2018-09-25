@@ -11,16 +11,17 @@
 #include <sys/epoll.h>
 #endif
 
+namespace RabbitLine
+{
+
 class Poller;
 
 class Channel
 {
 public:
-    Channel(Poller* po, int fd);
-
-    Channel(const Channel&) = delete;
-    Channel& operator=(const Channel&) = delete;
-
+    Channel(Poller *po, int fd);
+    Channel(const Channel &) = delete;
+    Channel &operator=(const Channel &) = delete;
     int getEvents();
     int getRevents();
     bool isAddedToPoller();
@@ -53,7 +54,7 @@ public:
 #endif
 
 private:
-    Poller * poller_;
+    Poller *poller_;
     bool isAddedToPoller_;
     int events_;
     int revents_;
@@ -63,4 +64,5 @@ private:
     EventCallbackFunc errorCallbackFunc_;
 };
 
+}
 #endif //COROUTLINE_CHANNEL_H

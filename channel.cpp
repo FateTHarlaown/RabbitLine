@@ -6,6 +6,8 @@
 #include "channel.h"
 #include "poller.h"
 
+using namespace RabbitLine;
+
 Channel::Channel(Poller* po, int fd) : poller_(po), isAddedToPoller_(false), fd_(fd), events_(kNoEvent)
 {
 }

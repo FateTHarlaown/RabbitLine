@@ -14,6 +14,9 @@
 #include <iostream>
 #include "coroutline.h"
 #include "channel.h"
+#include "rabbitline.h"
+
+using namespace RabbitLine;
 
 typedef struct fdinfo {
     int userFlag;
@@ -352,7 +355,7 @@ void freeFdInfo(int fd)
     }
 }
 
-int enableHook()
+int RabbitLine::enableHook()
 {
     return 1;
 }

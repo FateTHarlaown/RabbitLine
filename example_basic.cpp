@@ -1,70 +1,45 @@
 #include <iostream>
-#include <unistd.h>
-#include "coroutline.h"
-#include "poller.h"
+#include "rabbitline.h"
 
-void func4(void * arg)
+void func4()
 {
     std::cout << "ggggggg" << std::endl;
 }
 
-void func3(void * arg)
+void func3()
 {
-    Scheduler * sc = getLocalScheduler();
     std::cout << "mmmmmmm" << std::endl;
-    int c4 = sc->create(func4, NULL);
-    sc->resume(c4);
+    int c4 = RabbitLine::create(func4);
+    RabbitLine::resume(c4);
     std::cout << "ooooooo" << std::endl;
 }
 
-void func2(void * arg)
+void func2()
 {
-    Scheduler * sc = getLocalScheduler();
-    int c3 = sc->create(func3, NULL);
-    sc->resume(c3);
+    int c3 = RabbitLine::create(func3);
+    RabbitLine::resume(c3);
     std::cout << "uuuuuu" << std::endl;
-    sc->yield();
+    RabbitLine::yield();
     std::cout << "zzzzzz" << std::endl;
 }
 
-void func1(void * arg)
+void func1()
 {
-    Scheduler * sc = getLocalScheduler();
     std::cout << "aaaaaa" << std::endl;
-    int c2 = sc->create(func2, NULL);
-    sc->resume(c2);
+    int c2 = RabbitLine::create(func2);
+    RabbitLine::resume(c2);
     std::cout << "dddddd" << std::endl;
-    sc->resume(c2);
+    RabbitLine::resume(c2);
     std::cout << "xxxxxxx" << std::endl;
 }
 
-
-
-void timer1()
-{
-    std::cout << "Timer1 爆了啊！！！" << std::endl;
-}
-
-void timer2()
-{
-    std::cout << "Timer2 炸了啊！！！！！！！！！" << std::endl;
-}
 
 int main()
 {
 
     std::cout << "coroutline_t" << std::endl;
-    Scheduler * sc = getLocalScheduler();
-    int c1 = sc->create(func1, NULL);
-    sc->resume(c1);
-    /*
-    Poller * p = new PollPoller();
-    p->addTimer(Timestamp::nowAfter(1), timer1, true, 3000);
-    p->addTimer(Timestamp::nowAfter(5), timer2, true, 5000);
-    while (1) {
-        p->runPoll();
-    }
-     */
-    sc->mainLoop();
+    int c1 = RabbitLine::create(func1);
+    RabbitLine::resume(c1);
+
     return 0;
 }

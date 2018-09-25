@@ -7,9 +7,11 @@
 #include <iostream>
 #include "coroutline.h"
 
+using namespace RabbitLine;
+
 __thread Scheduler * localScheduler = NULL;
 
-Scheduler * getLocalScheduler()
+Scheduler * RabbitLine::getLocalScheduler()
 {
     if (!localScheduler) {
         localScheduler = new Scheduler();
@@ -64,7 +66,7 @@ int Scheduler::getIdleWorker()
     return -1;
 }
 
-int Scheduler::create(Func func, void *arg)
+int Scheduler::create(Func func)
 {
     int id = getIdleWorker();
     if (id == -1) {
@@ -76,7 +78,6 @@ int Scheduler::create(Func func, void *arg)
     }
 
     workers_[id].func = func;
-    workers_[id].arg = arg;
     workers_[id].state = RUNABLE;
 
     return id;
@@ -216,7 +217,7 @@ void Scheduler::stopLoop()
 void Scheduler::workerRoutline()
 {
     int id = runningWorker_;
-    workers_[id].func(workers_[id].arg);
+    workers_[id].func();
     workers_[id].state = FREE;
     assert(runningWorker_ == callPath_->top());
     callPath_->pop();

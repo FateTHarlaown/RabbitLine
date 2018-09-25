@@ -6,6 +6,7 @@
 #include <string>
 #include "timers.h"
 
+using namespace RabbitLine;
 
 bool Timestamp::valid()
 {
@@ -49,12 +50,12 @@ double Timestamp::nowMicroSeconds()
     return seconds * kMicroSecondsPerSecond + tv.tv_usec;
 }
 
-bool operator<(Timestamp l, Timestamp r)
+bool RabbitLine::operator<(Timestamp l, Timestamp r)
 {
     return l.microSecondsSinceEpoch() < r.microSecondsSinceEpoch();
 }
 
-bool operator==(Timestamp l, Timestamp r)
+bool RabbitLine::operator==(Timestamp l, Timestamp r)
 {
     return l.microSecondsSinceEpoch() == r.microSecondsSinceEpoch();
 }

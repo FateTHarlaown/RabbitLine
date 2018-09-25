@@ -15,11 +15,14 @@
 #include "callbacks.h"
 #include "timers.h"
 
+namespace RabbitLine
+{
 
 class Channel;
+
 class Poller;
 
-Poller * getLocalPoller();
+Poller *getLocalPoller();
 
 //给协程库用的poller都是在一个线程用的，不用考虑并发
 class Poller
@@ -29,13 +32,16 @@ public:
     {
 
     }
-    Poller(const Poller&) = delete;
-    const Poller&operator=(const Poller&) = delete;
-    virtual void runPoll() = 0;
-    virtual void addChannel(Channel* ch) = 0;
-    virtual void removeChannel(Channel* ch) = 0;
-    virtual void updateChannel(Channel* ch) = 0;
     virtual ~Poller();
+
+    Poller(const Poller &) = delete;
+    const Poller &operator=(const Poller &) = delete;
+
+    virtual void runPoll() = 0;
+    virtual void addChannel(Channel *ch) = 0;
+    virtual void removeChannel(Channel *ch) = 0;
+    virtual void updateChannel(Channel *ch) = 0;
+
     int64_t addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool repeat = false, int interval = 0);
     void removeTimer(int64_t seq);
     void addPendingFunction(PendingCallbackFunc func);
@@ -43,6 +49,7 @@ public:
 protected:
     virtual void getActiveChannels() = 0;
     virtual void handleEvents();
+
     void getExpiredTimers();
     void dealExpiredTimers();
     void dealPendingFunctors();
@@ -51,10 +58,10 @@ protected:
     //1000 ms for debug
     static const int kIntervalTime = 1000;
     int64_t seq_;
-    std::vector<Channel*> activeChannels_;
-    std::multimap<Timestamp, Timer*> timers_;
-    std::vector<std::pair<Timestamp, Timer*>> timeOutQue_;
-    std::unordered_map<int64_t , Timer*> waitingTimers_;
+    std::vector<Channel *> activeChannels_;
+    std::multimap<Timestamp, Timer *> timers_;
+    std::vector<std::pair<Timestamp, Timer *>> timeOutQue_;
+    std::unordered_map<int64_t, Timer *> waitingTimers_;
     std::vector<PendingCallbackFunc> pendingFunctors_;
 };
 
@@ -62,9 +69,10 @@ class PollPoller : public Poller
 {
 public:
     virtual void runPoll();
-    virtual void addChannel(Channel* ch);
-    virtual void removeChannel(Channel* ch);
-    virtual void updateChannel(Channel* ch) {};
+    virtual void addChannel(Channel *ch);
+    virtual void removeChannel(Channel *ch);
+    virtual void updateChannel(Channel *ch)
+    {};
 
 protected:
     virtual void getActiveChannels();
@@ -75,20 +83,20 @@ private:
 private:
     std::vector<struct pollfd> pollfds_;
     //channel的生命周期由外部管理
-    std::unordered_map<int, Channel*> pollChannels_;
+    std::unordered_map<int, Channel *> pollChannels_;
 };
 
-//#ifdef __linux__
 //todo:finish it
 class EpollPoller : public Poller
 {
 public:
     EpollPoller();
     virtual ~EpollPoller();
+
     virtual void runPoll();
-    virtual void addChannel(Channel* ch);
-    virtual void removeChannel(Channel* ch);
-    virtual void updateChannel(Channel* ch);
+    virtual void addChannel(Channel *ch);
+    virtual void removeChannel(Channel *ch);
+    virtual void updateChannel(Channel *ch);
 
 protected:
     virtual void getActiveChannels();
@@ -103,8 +111,8 @@ private:
     int activeChannelInThisTurn_;
     std::vector<struct epoll_event> eventList_;
 };
-//#endif
 
+}
 
 #endif //COROUTLINE_POLLER_H
 

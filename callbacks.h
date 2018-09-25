@@ -7,8 +7,13 @@
 
 #include <functional>
 
+namespace RabbitLine {
+
 using EventCallbackFunc = std::function<void ()>;
 using TimeoutCallbackFunc = std::function<void ()>;
 using PendingCallbackFunc = std::function<void ()>;
 
+}
+
 #endif //COROUTLINE_CALLBACKS_H
+
