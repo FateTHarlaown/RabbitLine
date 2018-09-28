@@ -9,6 +9,8 @@
 #include <thread>
 #include <functional>
 #include <stack>
+#include <memory>
+#include <unordered_map>
 #include "poller.h"
 
 namespace RabbitLine
@@ -27,6 +29,7 @@ enum State
     RUNABLE,
     RUNNING,
     SUSPEND,
+    UNKNOWN
 };
 
 //每个协程的初始栈大小
@@ -49,6 +52,7 @@ typedef struct coroutline
     coroutline() : stack(nullptr), stackSize(0), stackCapacity(kDefaultStackSize)
     {
         stack = new char[stackCapacity];
+        state = FREE;
     }
 
     ~coroutline()
@@ -63,6 +67,9 @@ typedef struct coroutline
 class Scheduler
 {
 public:
+    using CoroutlinePtr = std::shared_ptr<coroutline_t>;
+    using WorkersMap = std::unordered_map<int64_t, CoroutlinePtr>;
+
     Scheduler();
     Scheduler(const Scheduler &) = delete;
     Scheduler &operator=(const Scheduler &) = delete;
@@ -70,33 +77,33 @@ public:
     void mainLoop();
     void stopLoop();
     void yield();
-    int create(Func func);
-    int getRunningWoker();
-    void resume(int id);
-    State getStatus(int id);
+    int64_t create(Func func);
+    int64_t getRunningWoker();
+    void resume(int64_t id);
+    State getStatus(int64_t id);
 
 private:
-    void saveCoStack(int id);
+    void saveCoStack(int64_t id);
     void jumpToRunningCo();
-    int getIdleWorker();
     void workerRoutline();
     void initSwitchCtx();
 
 private:
-    static const int kMaxCoroutlineNum = 10000;
-    static const uint64_t kMaxStackSize = 1024 * 1024;
+    static const int kMaxCoroutlineNum = 1000000;
+    static const uint64_t kMaxStackSize = 1024 * 1024 *8;
 
-    coroutline_t *workers_;
+    int64_t seq_;
+    uint64_t activeWorkerNum_;
+    WorkersMap workers_;
+    std::stack<int64_t> callPath_;
     char *stack_;
-    std::stack<int> *callPath_;
     bool run_;
-    int runningWorker_;
+    int64_t runningWorker_;
     ucontext_t loopCtx_;
     ucontext_t switchCtx_;
     bool switchInited_;
     char *switchStack_;
     Poller *poller_;
-
 };
 
 }
