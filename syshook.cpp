@@ -350,6 +350,7 @@ void freeFdInfo(int fd)
 {
     auto it = fdMap.find(fd);
     if (it != fdMap.end()) {
+        delete it->second->ch;
         delete it->second;
         fdMap.erase(fd);
     }
