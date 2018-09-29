@@ -14,14 +14,14 @@ namespace RabbitLine {
  *  @param fn: std::function<void()>类型的回调函数.
  *  @return 创建成功，返回协程的id；否则返回-1.
  */
-int create(Func fn);
+int64_t create(Func fn);
 
 /*
  *  调度运行一个协程.
  *  @param id: 待运行协程的id.
  *  @return void.
  */
-void resume(int id);
+void resume(int64_t id);
 
 /*
  * 让出cpu本协程cpu使用权

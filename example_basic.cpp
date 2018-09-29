@@ -9,14 +9,14 @@ void func4()
 void func3()
 {
     std::cout << "mmmmmmm" << std::endl;
-    int c4 = RabbitLine::create(func4);
+    int64_t c4 = RabbitLine::create(func4);
     RabbitLine::resume(c4);
     std::cout << "ooooooo" << std::endl;
 }
 
 void func2()
 {
-    int c3 = RabbitLine::create(func3);
+    int64_t c3 = RabbitLine::create(func3);
     RabbitLine::resume(c3);
     std::cout << "uuuuuu" << std::endl;
     RabbitLine::yield();
@@ -26,7 +26,7 @@ void func2()
 void func1()
 {
     std::cout << "aaaaaa" << std::endl;
-    int c2 = RabbitLine::create(func2);
+    int64_t c2 = RabbitLine::create(func2);
     RabbitLine::resume(c2);
     std::cout << "dddddd" << std::endl;
     RabbitLine::resume(c2);
@@ -38,7 +38,7 @@ int main()
 {
 
     std::cout << "coroutline_t" << std::endl;
-    int c1 = RabbitLine::create(func1);
+    int64_t c1 = RabbitLine::create(func1);
     RabbitLine::resume(c1);
 
     return 0;

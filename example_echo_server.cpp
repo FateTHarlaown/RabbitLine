@@ -133,7 +133,7 @@ int main()
 
     SetNonBlock(listenFd);
     std::cout << "start listen, begin ti create accept routline!" << std::endl;
-    int ac = RabbitLine::create(accept_routline);
+    int64_t ac = RabbitLine::create(accept_routline);
     RabbitLine::resume(ac);
     RabbitLine::eventLoop();
 }

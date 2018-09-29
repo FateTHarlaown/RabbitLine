@@ -6,13 +6,13 @@
 
 using namespace RabbitLine;
 
-int RabbitLine::create(Func func)
+int64_t RabbitLine::create(Func func)
 {
     Scheduler * sc = getLocalScheduler();
     return sc->create(func);
 }
 
-void RabbitLine::resume(int id)
+void RabbitLine::resume(int64_t id)
 {
     Scheduler * sc = getLocalScheduler();
     sc->resume(id);
