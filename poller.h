@@ -11,6 +11,7 @@
 #endif
 #include <vector>
 #include <map>
+#include <memory>
 #include <unordered_map>
 #include "callbacks.h"
 #include "timers.h"
@@ -22,12 +23,19 @@ class Channel;
 
 class Poller;
 
-Poller *getLocalPoller();
+extern Poller *getLocalPoller();
 
 //给协程库用的poller都是在一个线程用的，不用考虑并发
 class Poller
 {
 public:
+    using ChannelList = std::vector<Channel *>;
+    using TimerPtr = std::shared_ptr<Timer>;
+    using TimerList = std::vector<std::pair<Timestamp, TimerPtr>>;
+    using TimerTree = std::multimap<Timestamp, TimerPtr>;
+    using TimerMap = std::unordered_map<int64_t, TimerPtr>;
+    using FunctorList = std::vector<PendingCallbackFunc>;
+
     Poller() : seq_(0)
     {
 
@@ -58,16 +66,19 @@ protected:
     //1000 ms for debug
     static const int kIntervalTime = 1000;
     int64_t seq_;
-    std::vector<Channel *> activeChannels_;
-    std::multimap<Timestamp, Timer *> timers_;
-    std::vector<std::pair<Timestamp, Timer *>> timeOutQue_;
-    std::unordered_map<int64_t, Timer *> waitingTimers_;
-    std::vector<PendingCallbackFunc> pendingFunctors_;
+    ChannelList activeChannels_;
+    TimerTree timers_;
+    TimerList timeOutQue_;
+    TimerMap waitingTimers_;
+    FunctorList pendingFunctors_;
 };
 
 class PollPoller : public Poller
 {
 public:
+    using EventList = std::vector<struct pollfd>;
+    using ChannelMap = std::unordered_map<int, Channel *>;
+
     virtual void runPoll();
     virtual void addChannel(Channel *ch);
     virtual void removeChannel(Channel *ch);
@@ -81,15 +92,16 @@ private:
     void preparePollEvents();
 
 private:
-    std::vector<struct pollfd> pollfds_;
+    EventList pollfds_;
     //channel的生命周期由外部管理
-    std::unordered_map<int, Channel *> pollChannels_;
+    ChannelMap pollChannels_;
 };
 
 //todo:finish it
 class EpollPoller : public Poller
 {
 public:
+    using EventList = std::vector<struct epoll_event>;
     EpollPoller();
     virtual ~EpollPoller();
 
@@ -109,7 +121,7 @@ private:
 
     int epollFd_;
     int activeChannelInThisTurn_;
-    std::vector<struct epoll_event> eventList_;
+    EventList eventList_;
 };
 
 }

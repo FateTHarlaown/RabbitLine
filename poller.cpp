@@ -32,9 +32,9 @@ int64_t Poller::addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback,
     }
 
     int64_t timerSeq = seq_++;
-    Timer * timer = new Timer(expirationTime, callback, timerSeq, repeat, interval);
-    waitingTimers_.insert(std::pair<int64_t , Timer*>(timerSeq, timer));
-    timers_.insert(std::pair<Timestamp, Timer*>(expirationTime, timer));
+    TimerPtr timer = std::make_shared<Timer>(expirationTime, callback, timerSeq, repeat, interval);
+    waitingTimers_.insert(TimerMap::value_type(timerSeq, timer));
+    timers_.insert(TimerTree::value_type(expirationTime, timer));
 
     return timerSeq;
 }
@@ -42,12 +42,11 @@ int64_t Poller::addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback,
 void Poller::removeTimer(int64_t seq)
 {
     auto it = waitingTimers_.find(seq);
-
     if (it == waitingTimers_.end()) {
         return;
     }
 
-    Timer * delTimer = it->second;
+    TimerPtr delTimer = it->second;
     size_t count = timers_.count(delTimer->getExpiration());
     assert(count > 0);
 
@@ -59,17 +58,10 @@ void Poller::removeTimer(int64_t seq)
             break;
         }
     }
-
-    delete delTimer;
 }
 
 Poller::~Poller()
 {
-    for (const auto& p : timers_) {
-        if (p.second) {
-            delete p.second;
-        }
-    }
 }
 
 void Poller::handleEvents()
@@ -102,9 +94,7 @@ void Poller::dealExpiredTimers()
 
         if (t.second->isRepeat()) {
             t.second->reset();
-            timers_.insert(std::pair<Timestamp, Timer*>(t.second->getExpiration(), t.second));
-        } else {
-            delete t.second;
+            timers_.insert(TimerTree::value_type(t.second->getExpiration(), t.second));
         }
     }
 }
@@ -147,7 +137,7 @@ void PollPoller::runPoll()
 void PollPoller::addChannel(Channel *ch)
 {
     if (pollChannels_.end() == pollChannels_.find(ch->getFd()) ) {
-        pollChannels_.insert(std::pair<int,Channel*>(ch->getFd(), ch));
+        pollChannels_.insert(ChannelMap::value_type(ch->getFd(), ch));
     }
 }
 

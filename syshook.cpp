@@ -18,16 +18,20 @@
 
 using namespace RabbitLine;
 
+using ChannelPtr = std::shared_ptr<Channel>;
+
 typedef struct fdinfo {
     int userFlag;
     struct sockaddr_in dest;
     int domain;
-    Channel * ch;
+    ChannelPtr ch;
     time_t writeTimeout;/*milliseconds*/
     time_t readTimeout;/*milliseconds*/
 } fdinfo_t;
 
-static std::unordered_map<int, fdinfo_t*> fdMap;
+using FdInfoPtr = std::shared_ptr<fdinfo_t>;
+
+static std::unordered_map<int, FdInfoPtr> fdMap;
 
 static const int kWaitReadEventType = 0;
 static const int kWaitWriteEventType = 1;
@@ -51,8 +55,8 @@ static sys_poll_ptr sys_poll = (sys_poll_ptr)dlsym(RTLD_NEXT, "poll");
 static sys_fcntl_ptr  sys_fcntl = (sys_fcntl_ptr)dlsym(RTLD_NEXT, "fcntl");
 static sys_setsockopt_ptr  sys_setsockopt = (sys_setsockopt_ptr)dlsym(RTLD_NEXT, "setsockopt");
 
-static fdinfo_t * getFdInfo(int fd);
-static fdinfo_t * allocFdInfo(int fd);
+static FdInfoPtr getFdInfo(int fd);
+static FdInfoPtr allocFdInfo(int fd);
 static void waitUntilEventOrTimeout(int fd, int waitType);
 static void freeFdInfo(int fd);
 
@@ -64,7 +68,7 @@ int socket(int domain, int type, int protocol)
         return fd;
     }
 
-    fdinfo_t * info = allocFdInfo(fd);
+    FdInfoPtr info = allocFdInfo(fd);
     if (info) {
         info->domain = domain;
         fcntl(fd, F_SETFL, sys_fcntl(fd, F_GETFL, 0));
@@ -75,7 +79,7 @@ int socket(int domain, int type, int protocol)
 
 int co_accept(int fd, struct sockaddr *addr, socklen_t *len)
 {
-    fdinfo * info = getFdInfo(fd);
+    FdInfoPtr info = getFdInfo(fd);
     if (!info || (O_NONBLOCK & info->userFlag)) {
             return accept(fd, addr, len);
     }
@@ -97,7 +101,7 @@ int setsockopt(int fd, int level, int option_name,
                const void *option_value, socklen_t option_len)
 {
     //std::cout << "call my setsocketopt! " << std::endl;
-    fdinfo * info = getFdInfo(fd);
+    FdInfoPtr info = getFdInfo(fd);
     if (info && level == SOL_SOCKET) {
         struct timeval * val = (struct timeval *)(option_value);
         if (option_name == SO_RCVTIMEO) {
@@ -113,7 +117,7 @@ int setsockopt(int fd, int level, int option_name,
 ssize_t read(int fd, void * buf, size_t nbyte)
 {
     //std::cout << "call my read! " << std::endl;
-    fdinfo * info = getFdInfo(fd);
+    FdInfoPtr info = getFdInfo(fd);
     if (!info || (O_NONBLOCK & info->userFlag)) {
         return sys_read(fd, buf, nbyte);
     }
@@ -126,7 +130,7 @@ ssize_t read(int fd, void * buf, size_t nbyte)
 ssize_t write(int fd, const void * buf, size_t nbyte)
 {
     //std::cout << "call my write! " << std::endl;
-    fdinfo * info = getFdInfo(fd);
+    FdInfoPtr info = getFdInfo(fd);
     if (!info || (O_NONBLOCK & info->userFlag)) {
         return sys_write(fd, buf, nbyte);
     }
@@ -159,7 +163,7 @@ ssize_t write(int fd, const void * buf, size_t nbyte)
 int connect(int fd, const struct sockaddr *address, socklen_t address_len)
 {
     int ret = sys_connect(fd, address, address_len);
-    fdinfo * info = getFdInfo(fd);
+    FdInfoPtr info = getFdInfo(fd);
     if (!info) {
         return ret;
     }
@@ -177,7 +181,7 @@ int connect(int fd, const struct sockaddr *address, socklen_t address_len)
         return ret;
     }
 
-    Channel * ch = info->ch;
+    ChannelPtr ch = info->ch;
     /*等待连接成功，最多尝试等待3次，每次25秒超时*/
     for (int i = 0; i < 3; ++i) {
         waitUntilEventOrTimeout(fd, kWaitReadEventType);
@@ -214,7 +218,7 @@ int fcntl(int feilds, int cmd, ...)
     va_list args;
     va_start(args, cmd);
     int ret = -1;
-    fdinfo_t * info = getFdInfo(feilds);
+    FdInfoPtr info = getFdInfo(feilds);
     switch (cmd) {
         case F_SETFL: {
             int param = va_arg(args, int);
@@ -289,7 +293,7 @@ int close(int fd)
     return sys_close(fd);
 }
 
-fdinfo_t * getFdInfo(int fd)
+FdInfoPtr getFdInfo(int fd)
 {
     if (fdMap.find(fd) != fdMap.end()) {
         return fdMap[fd];
@@ -298,13 +302,13 @@ fdinfo_t * getFdInfo(int fd)
     return NULL;
 }
 
-fdinfo_t * allocFdInfo(int fd)
+FdInfoPtr  allocFdInfo(int fd)
 {
     if (fdMap.find(fd) == fdMap.end()) {
-        fdinfo_t * info = new fdinfo_t();
+        FdInfoPtr info = std::make_shared<fdinfo_t>();
         info->readTimeout = 1000;
         info->writeTimeout = 1000;
-        info->ch = new Channel(getLocalPoller(), fd);
+        info->ch = std::make_shared<Channel>(getLocalPoller(), fd);
 
         fdMap[fd] = info;
         return info;
@@ -317,10 +321,10 @@ void waitUntilEventOrTimeout(int fd, int waitType)
 {
     Scheduler * sc = getLocalScheduler();
     Poller * po = getLocalPoller();
-    fdinfo * info = getFdInfo(fd);
+    FdInfoPtr info = getFdInfo(fd);
     /*调用者必须保证这个fd已经分配*/
     assert(info);
-    Channel * ch = info->ch;
+    ChannelPtr ch = info->ch;
 
     ch->clearEvents();
     ch->clearCallbacks();
@@ -350,8 +354,6 @@ void freeFdInfo(int fd)
 {
     auto it = fdMap.find(fd);
     if (it != fdMap.end()) {
-        delete it->second->ch;
-        delete it->second;
         fdMap.erase(fd);
     }
 }
