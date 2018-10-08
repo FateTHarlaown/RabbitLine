@@ -18,6 +18,12 @@ void RabbitLine::resume(int64_t id)
     sc->resume(id);
 }
 
+int64_t RabbitLine::getMyCoId()
+{
+    Scheduler * sc = getLocalScheduler();
+    return sc->getRunningWoker();
+}
+
 void RabbitLine::yield()
 {
     Scheduler * sc = getLocalScheduler();

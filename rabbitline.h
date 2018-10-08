@@ -24,6 +24,12 @@ int64_t create(Func fn);
 void resume(int64_t id);
 
 /*
+ * 获取本协程id
+ * @return int64_t
+ */
+int64_t getMyCoId();
+
+/*
  * 让出cpu本协程cpu使用权
  */
 void yield();
@@ -39,9 +45,20 @@ void eventLoop();
 void stopLoop();
 
 /*
- * 启用hook系统调用的功能（= = 其实目前还没有关闭功能）
+ * 启用hook系统调用的功能.
  */
-int enableHook();
+void enableHook();
+
+/*
+ * 关闭hook系统调用的功能.
+ */
+void disableHook();
+
+/*
+ * 是否开启著hook系统调用.
+ * @return: bool值，true表示开启，false未开启.
+ */
+bool isEnableHook();
 
 /*
  * 添加一个定时器

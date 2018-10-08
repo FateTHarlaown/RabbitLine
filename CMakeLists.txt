@@ -21,7 +21,7 @@ set(SOURCE_FILES
         channel.h
         rabbitline.h
         rabbitline.cpp
-        example_timer.cpp)
+        example_timer.cpp cond.cpp cond.h)
 
 add_library(co_static STATIC ${SOURCE_FILES} rabbitline.cpp)
 set_target_properties(co_static PROPERTIES OUTPUT_NAME co)
@@ -36,3 +36,6 @@ target_link_libraries(example_echo_server co_static dl)
 
 add_executable(example_timer example_timer.cpp)
 target_link_libraries(example_timer co_static dl)
+
+add_executable(example_cond example_cond.cpp)
+target_link_libraries(example_cond co_static dl)

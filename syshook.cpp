@@ -32,6 +32,7 @@ typedef struct fdinfo {
 using FdInfoPtr = std::shared_ptr<fdinfo_t>;
 
 static std::unordered_map<int, FdInfoPtr> fdMap;
+static bool hookFlag = false;
 
 static const int kWaitReadEventType = 0;
 static const int kWaitWriteEventType = 1;
@@ -83,7 +84,6 @@ int co_accept(int fd, struct sockaddr *addr, socklen_t *len)
     if (!info || (O_NONBLOCK & info->userFlag)) {
             return accept(fd, addr, len);
     }
-
 
     waitUntilEventOrTimeout(fd, kWaitReadEventType);
 
@@ -299,7 +299,7 @@ FdInfoPtr getFdInfo(int fd)
         return fdMap[fd];
     }
 
-    return NULL;
+    return nullptr;
 }
 
 FdInfoPtr  allocFdInfo(int fd)
@@ -314,7 +314,7 @@ FdInfoPtr  allocFdInfo(int fd)
         return info;
     }
 
-    return NULL;
+    return nullptr;
 }
 
 void waitUntilEventOrTimeout(int fd, int waitType)
@@ -358,10 +358,19 @@ void freeFdInfo(int fd)
     }
 }
 
-int RabbitLine::enableHook()
+void RabbitLine::enableHook()
 {
-    return 1;
+    hookFlag = true;
 }
 
 
+void RabbitLine::disableHook()
+{
+    hookFlag = false;
+}
+
+bool RabbitLine::isEnableHook()
+{
+    return hookFlag;
+}
 
