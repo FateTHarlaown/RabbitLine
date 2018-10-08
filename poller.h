@@ -63,8 +63,8 @@ protected:
     void dealPendingFunctors();
 
 protected:
-    //1000 ms for debug
-    static const int kIntervalTime = 1000;
+    //300 ms for debug
+    static const int kIntervalTime = 300;
     int64_t seq_;
     ChannelList activeChannels_;
     TimerTree timers_;

@@ -30,6 +30,10 @@ Scheduler::Scheduler() : runningWorker_(-1), run_(false),
 
 Scheduler::~Scheduler()
 {
+    for (auto & w : workers_) {
+        delete w.second;
+    }
+
     delete [] switchStack_;
     delete [] stack_;
 }
@@ -58,10 +62,10 @@ int64_t Scheduler::create(Func func)
     if (!switchInited_) {
         initSwitchCtx();
     }
-    CoroutlinePtr co = std::make_shared<coroutline_t>();
+    coroutline_t * co = new coroutline_t();
     co->func = func;
     co->state = RUNABLE;
-    workers_.insert(std::pair<int64_t , CoroutlinePtr>(id, co));
+    workers_.insert(WorkersMap::value_type(id, co));
 
     return id;
 }
@@ -73,7 +77,7 @@ void Scheduler::resume(int64_t id)
         return;
     }
 
-    CoroutlinePtr co = workers_[id];
+    coroutline_t * co = workers_[id];
     /*获取当前上下文，如果处于协程调用链的底层，则该resum是mainLoop调用的，上下文保存在loopCtx_中*/
     ucontext_t * curCtx = NULL;
     if (!callPath_.empty()) {
@@ -132,7 +136,7 @@ int64_t Scheduler::getRunningWoker()
 
 void Scheduler::saveCoStack(int64_t id)
 {
-    CoroutlinePtr co = workers_[id];
+    coroutline_t * co = workers_[id];
     char dummy = 0;
     /*
      * 计算当协程已经使用的程栈大小
@@ -160,18 +164,22 @@ void Scheduler::saveCoStack(int64_t id)
  * */
 void Scheduler::jumpToRunningCo()
 {
-    CoroutlinePtr curCo = workers_[runningWorker_];
-    if (curCo->state == FREE) {
-        workers_.erase(runningWorker_);
+    if (runningWorker_ != -1) {
+        coroutline_t * curCo = workers_[runningWorker_];
+        if (curCo->state == FREE) {
+            workers_.erase(runningWorker_);
+            delete curCo;
+        }
     }
 
     /*除返回主循环mainLoop之外都要拷贝栈*/
     if (!callPath_.empty()) {
         runningWorker_ = callPath_.top();
-        CoroutlinePtr co = workers_[runningWorker_];
+        coroutline_t * co = workers_[runningWorker_];
         memcpy(stack_+kMaxStackSize - co->stackSize, co->stack, co->stackSize);
         setcontext(&co->ctx);
     } else {
+        runningWorker_ = -1;
         setcontext(&loopCtx_);
     }
 }
@@ -182,7 +190,7 @@ void Scheduler::yield()
         return;
     }
 
-    CoroutlinePtr co = workers_[runningWorker_];
+    coroutline_t * co = workers_[runningWorker_];
     assert(runningWorker_ == callPath_.top());
     callPath_.pop();
     co->state = SUSPEND;
@@ -205,11 +213,12 @@ void Scheduler::stopLoop()
 
 void Scheduler::workerRoutline()
 {
-    CoroutlinePtr co = workers_[runningWorker_];
+    coroutline_t * co = workers_[runningWorker_];
     co->func();
     co->state = FREE;
     assert(runningWorker_ == callPath_.top());
     activeWorkerNum_--;
     callPath_.pop();
+    std::cout << runningWorker_ << "has ended!" << std::endl;
     setcontext(&switchCtx_);
 }

@@ -104,6 +104,7 @@ void Poller::dealPendingFunctors()
     for (auto& f : pendingFunctors_) {
         f();
     }
+    pendingFunctors_.clear();
 }
 
 void Poller::addPendingFunction(PendingCallbackFunc func)

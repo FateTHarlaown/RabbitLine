@@ -67,8 +67,7 @@ typedef struct coroutline
 class Scheduler
 {
 public:
-    using CoroutlinePtr = std::shared_ptr<coroutline_t>;
-    using WorkersMap = std::unordered_map<int64_t, CoroutlinePtr>;
+    using WorkersMap = std::unordered_map<int64_t, coroutline_t *>;
 
     Scheduler();
     Scheduler(const Scheduler &) = delete;
