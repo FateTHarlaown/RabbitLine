@@ -128,7 +128,7 @@ int main()
 
     if (listenFd == -1) {
         std::cout << "listen fd -1 !!" << std::endl;
-        exit(1);
+        abort();
     }
 
     SetNonBlock(listenFd);

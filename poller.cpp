@@ -182,7 +182,7 @@ EpollPoller::EpollPoller() : activeChannelInThisTurn_(0)
     int epollfd = epoll_create(5);
     if (epollfd < 0) {
         perror("epoll create failed!");
-        exit(2);
+        abort();
     }
     epollFd_ = epollfd;
     eventList_.resize(kInitEnventNum);
