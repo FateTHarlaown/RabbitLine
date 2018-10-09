@@ -302,6 +302,7 @@ unsigned int sleep(unsigned int seconds)
     int64_t  timerid = po->addTimer(Timestamp::nowAfterSeconds(seconds),
                                     std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
     sc->yield();
+    po->removeTimer(timerid);
     double now = Timestamp::nowMicroSeconds();
     double time = now - prev;
     assert(time > 0);
