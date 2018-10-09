@@ -293,6 +293,21 @@ int close(int fd)
     return sys_close(fd);
 }
 
+unsigned int sleep(unsigned int seconds)
+{
+    //std::cout << "call my sleep " << std::endl;
+    Scheduler * sc = getLocalScheduler();
+    Poller * po = getLocalPoller();
+    double prev  = Timestamp::nowMicroSeconds();
+    int64_t  timerid = po->addTimer(Timestamp::nowAfterSeconds(seconds),
+                                    std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
+    sc->yield();
+    double now = Timestamp::nowMicroSeconds();
+    double time = now - prev;
+    assert(time > 0);
+    return static_cast<unsigned int>(time);
+}
+
 FdInfoPtr getFdInfo(int fd)
 {
     if (fdMap.find(fd) != fdMap.end()) {

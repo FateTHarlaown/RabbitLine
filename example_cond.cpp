@@ -4,6 +4,7 @@
 
 #include <list>
 #include <iostream>
+#include <unistd.h>
 #include "rabbitline.h"
 #include "cond.h"
 
@@ -18,9 +19,7 @@ void producer()
         queue.push_back(i);
         std::cout << "producer pushed " << i << std::endl;
         con.signal();
-        RabbitLine::addTimer(RabbitLine::Timestamp::nowAfterSeconds(2),
-                             std::bind(RabbitLine::resume, RabbitLine::getMyCoId()));
-        RabbitLine::yield();
+        sleep(2);
     }
     std::cout << "producer over!" << std::endl;
     RabbitLine::stopLoop();
