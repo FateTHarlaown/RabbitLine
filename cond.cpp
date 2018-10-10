@@ -2,6 +2,7 @@
 // Created by NorSnow_ZJ on 2018/10/8.
 //
 
+#include <sys/types.h>
 #include "cond.h"
 
 using namespace RabbitLine;
@@ -18,8 +19,10 @@ void cond::timewait(uint ms)
     Scheduler * sc = getLocalScheduler();
     Poller * po = getLocalPoller();
     waitList_.push_back(sc->getRunningWoker());
-    po->addTimer(Timestamp::nowAfterMilliSeconds(ms),
+    int64_t timerid = po->addTimer(Timestamp::nowAfterMilliSeconds(ms),
                  std::bind(&Scheduler::resume, sc, sc->getRunningWoker()));
+    sc->yield();
+    po->removeTimer(timerid);
 }
 
 void cond::signal()
