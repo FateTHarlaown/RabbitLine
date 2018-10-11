@@ -10,21 +10,8 @@
 #include <iostream>
 #include "rabbitline.h"
 
-extern int enableHook();
-extern int co_accept(int fd, struct sockaddr *addr, socklen_t *len);
 
 static int listenFd;
-
-static int SetNonBlock(int iSock)
-{
-    int iFlags;
-
-    iFlags = fcntl(iSock, F_GETFL, 0);
-    iFlags |= O_NONBLOCK;
-    iFlags |= O_NDELAY;
-    int ret = fcntl(iSock, F_SETFL, iFlags);
-    return ret;
-}
 
 static void SetAddr(const char *pszIP,const unsigned short shPort,struct sockaddr_in &addr)
 {
@@ -108,12 +95,11 @@ void accept_routline()
     RabbitLine::enableHook();
     std::cout << "into accet line!" << std::endl;
     while (1) {
-        std::cout << "begin to accept" << std::endl;
-        int cli = co_accept(listenFd, NULL, NULL);
+        //std::cout << "begin to accept" << std::endl;
+        int cli = accept(listenFd, NULL, NULL);
         if (cli < 0) {
             continue;
         }
-        SetNonBlock(cli);
         //std::cout << "a cli " << cli << " connect! start create his io_roultline!" << std::endl;
         int io = RabbitLine::create(std::bind(io_routline, cli));
         RabbitLine::resume(io);
@@ -124,14 +110,13 @@ int main()
 {
     RabbitLine::enableHook();
     listenFd = CreateTcpSocket(54321, INADDR_ANY, true);
-    listen(listenFd, 1024);
-
     if (listenFd == -1) {
         std::cout << "listen fd -1 !!" << std::endl;
         abort();
     }
 
-    SetNonBlock(listenFd);
+    listen(listenFd, 1024);
+
     std::cout << "start listen, begin ti create accept routline!" << std::endl;
     int64_t ac = RabbitLine::create(accept_routline);
     RabbitLine::resume(ac);

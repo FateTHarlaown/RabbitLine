@@ -5,6 +5,7 @@
 #ifndef RABBITLINE_H
 #define RABBITLINE_H
 
+#include <sys/socket.h>
 #include "coroutline.h"
 
 namespace RabbitLine {
@@ -75,6 +76,21 @@ int64_t addTimer(Timestamp expirationTime, TimeoutCallbackFunc callback, bool re
  * @param: 定时器id
  */
 void removeTimer(int64_t seq);
+
+/*
+ * hook的系统调用的内部实现版本
+ * 声明在这里用于当关闭hook系统调用功能时在RabbitLine命名空间显式调用
+ */
+int CoSocket(int domain, int type, int protocol);
+int CoAccept(int fd, struct sockaddr *addr, socklen_t *len);
+int CoSetsockopt(int fd, int level, int option_name,
+               const void *option_value, socklen_t option_len);
+int CoFcntl(int feilds, int cmd, ...);
+ssize_t CoRead(int fd, void * buf, size_t nbyte);
+ssize_t CoWrite(int fd, const void * buf, size_t nbyte);
+int CoConnect(int fd, const struct sockaddr *address, socklen_t address_len);
+int CoClose(int fd);
+unsigned int CoSleep(unsigned int seconds);
 
 }
 
