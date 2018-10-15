@@ -371,7 +371,7 @@ int fcntl(int feilds, int cmd, ...)
             int param = va_arg(args, int);
             int flag = param;
             if (info && isEnableHook()) {
-                std::cout << "my fcntl set flag and no block" << std::endl;
+                //std::cout << "my fcntl set flag and no block" << std::endl;
                 flag |= O_NONBLOCK;
             }
 

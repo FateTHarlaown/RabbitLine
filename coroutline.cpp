@@ -219,6 +219,6 @@ void Scheduler::workerRoutline()
     assert(runningWorker_ == callPath_.top());
     activeWorkerNum_--;
     callPath_.pop();
-    std::cout << runningWorker_ << "has ended!" << std::endl;
+    //std::cout << runningWorker_ << "has ended!" << std::endl;
     setcontext(&switchCtx_);
 }
