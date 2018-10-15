@@ -46,11 +46,11 @@ public:
 #ifdef  __linux__
     const static int kReadEvent = EPOLLIN | EPOLLPRI;
     const static int kWriteEvent = EPOLLOUT;
-    const static int kErrorEvent = EPOLLERR;
+    const static int kErrorEvent = EPOLLERR | EPOLLHUP;
 #else
     const static int kReadEvent = POLLIN | POLLPRI;
     const static int kWriteEvent = POLLOUT;
-    const static int kErrorEvent = POLLERR | POLLHUP;
+    const static int kErrorEvent = POLLERR | POLLHUP | POLLNVAL;
 #endif
 
 private:
