@@ -39,3 +39,6 @@ target_link_libraries(example_timer co_static dl)
 
 add_executable(example_cond example_cond.cpp)
 target_link_libraries(example_cond co_static dl)
+
+add_executable(example_echo_server_multi_proc example_echo_server_multi_proc.cpp)
+target_link_libraries(example_echo_server_multi_proc co_static dl)

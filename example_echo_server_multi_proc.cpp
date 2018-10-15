@@ -1,13 +1,15 @@
 //
-// Created by NorSnow_ZJ on 2018/8/30.
+// Created by NorSnow_ZJ on 2018/10/12.
 //
-
-#include <fcntl.h>
+#include <thread>
+#include <vector>
+#include <iostream>
+#include <string>
+#include <sstream>
 #include <unistd.h>
 #include <netinet/in.h>
-#include <arpa/inet.h>
 #include <string.h>
-#include <iostream>
+#include <arpa/inet.h>
 #include "rabbitline.h"
 
 
@@ -59,6 +61,7 @@ static int CreateTcpSocket(const unsigned short shPort /* = 0 */,const char *psz
     }
     return fd;
 }
+
 
 
 void io_routline(int cli)
@@ -118,6 +121,7 @@ void accept_routline()
 
 int main()
 {
+    /*需要的话可以编写守护进程*/
     RabbitLine::enableHook();
     listenFd = CreateTcpSocket(54321, INADDR_ANY, true);
     if (listenFd == -1) {
@@ -127,8 +131,22 @@ int main()
 
     listen(listenFd, 1024);
 
-    std::cout << "start listen, begin ti create accept routline!" << std::endl;
-    int64_t ac = RabbitLine::create(accept_routline);
-    RabbitLine::resume(ac);
-    RabbitLine::eventLoop();
+    for (int i = 0; i < 4; i++) {
+        pid_t pid = fork();
+        if (pid > 0) {
+            continue;
+        } else if (pid< 0) {
+            perror("fork failed!");
+            abort();
+        }
+
+        RabbitLine::enableHook();
+        int64_t ac = RabbitLine::create(accept_routline);
+        RabbitLine::resume(ac);
+        RabbitLine::eventLoop();
+        close(listenFd);
+        exit(0);
+    }
+    close(listenFd);
+    return 0;
 }
